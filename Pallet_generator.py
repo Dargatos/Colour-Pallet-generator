@@ -2,9 +2,6 @@ import colorsys
 from datetime import datetime
 from PIL import Image
 from itertools import chain
-import math
-import tkinter as tk
-import numpy as np
 
 # Here are a lot of functions unused im planing on using them later tho not so far to use them atm
 

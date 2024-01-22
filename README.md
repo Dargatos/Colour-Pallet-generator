@@ -5,3 +5,5 @@ Noo the code isnt beatiful (my first python thing)
 
 Noo not Done atm lots off missing features but usable in a degree lol
 I have DC for help or just open an issue :D
+
+Download link to mega [here](https://mega.nz/folder/daETCJiK#wGIxElfF0GbZmrny0zkQjg) tho u can also just run it via vscode or stuff 
