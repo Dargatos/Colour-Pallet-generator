@@ -6,6 +6,8 @@ import math
 import tkinter as tk
 import numpy as np
 
+# Here are a lot of functions unused im planing on using them later tho not so far to use them atm
+
 class ColorGenerator:
     def __init__(self, smoothness=100, num_arrays=3, test_mode=True, percentage=None, file_name='Autumn Leaves', rainbow=False, alternating=False):
         self.smoothness = smoothness
@@ -82,13 +84,8 @@ class ColorGenerator:
         hex_color = hex_color.lstrip("#")
         return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
-    def save_colors_to_file(self, colors, prefix='colors'):
-        current_time = datetime.now().strftime('%Y.%m.%d_%H_%M_%S')
-        file_info = f'{len(self.alternated_colors)}'
-        if not self.test_mode:
-            filename = f'C:\\Users\\Mio\\AppData\\Roaming\\SoundSpacePlus\\colorsets\\{self.file_name}__{file_info}-{prefix}_{current_time}.txt'
-        else:
-            filename = f'C:\\Users\\Mio\\AppData\\Roaming\\SoundSpacePlus\\Test_Colorsets\\{self.file_name}__{file_info}-{prefix}_{current_time}.txt'
+    def save_colors_to_file(self, colors, name, directory):
+        filename = f'{directory}/{name}.txt'
         with open(filename, 'w') as file:
             for color in colors:
                 file.write(color + '\n')

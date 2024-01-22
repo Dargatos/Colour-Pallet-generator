@@ -1,16 +1,14 @@
 import tkinter as tk
 import customtkinter as ctk
 import os
+import getpass
+from tkinter import filedialog
 from CTkColorPicker import *
 from PIL import Image, ImageTk
 from Pallet_generator import *
 from ctk_color_picker import *
 
-
-WSDefaultx = 1100
-WSDefaulty = 580
-
-
+# Yeah thas the code for UI not Pretty and way to less comments to understand that mess by questions if have dicord or via issues on github lol
 
 class NavigatioFrame(ctk.CTkFrame):
 	def __init__(
@@ -184,6 +182,10 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.left_arrow_image = left_arrow_image
 
 
+		self.colour_pallets_frames = []
+		self.colour_parent_array =[]
+		self.colour_array = []
+		self.latest_new_frame= None
 
 		self.colour_buttons_list_parent = []
 		self.colours_list_frame_array = []
@@ -200,10 +202,10 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.label_colour_pallet.grid(row=0, column=0, columnspan=3, sticky="nswe", padx=20, pady=(10,0))
 
 
-		self.next_pallet_button= ctk.CTkButton(self, corner_radius=6,fg_color="Gray20",text="",height=20,width=20, hover_color="Gray25",image=right_arrow_image,command=lambda: self.change_frame(1))
+		self.next_pallet_button= ctk.CTkButton(self, corner_radius=6,fg_color="Gray20",text="",height=20,width=20, hover_color="Gray25",image=right_arrow_image,command=lambda: self._frame(None,None,+1))
 		#self.next_pallet_button.grid(row=0,column=2,sticky="",pady=(10,0),padx=(10,0))
 		
-		self.previous_pallet_button= ctk.CTkButton(self, corner_radius=6,fg_color="Gray20",text="",height=20,width=20, hover_color="Gray25",image=left_arrow_image,command=lambda: self.change_frame(-1))
+		self.previous_pallet_button= ctk.CTkButton(self, corner_radius=6,fg_color="Gray20",text="",height=20,width=20, hover_color="Gray25",image=left_arrow_image,command=lambda: self._frame(None,None,-1))
 		#self.previous_pallet_button.grid(row=0,column=0,sticky="",pady=(10,0),padx=(0,10))
 
 		self.button_colour_add = ctk.CTkButton(
@@ -251,7 +253,7 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.colour_list_parent.grid_columnconfigure(0,weight=1,minsize=222)
 		self.colour_list_parent.grid_rowconfigure(0,weight=1)
 
-		self.add_colour_list_frame(0)
+		self.add_colour_frame()
 		self.bind("<Configure>", self.hide_scrollbar)
 
 
@@ -273,71 +275,110 @@ class ColourFramePallet(ctk.CTkFrame):
 		else:
 			self.next_pallet_button.grid_forget()
 			self.previous_pallet_button.grid_forget()
-		
-	def add_colour_list_frame(self,pos):
-		#Creates frame when called
-		frame = ctk.CTkScrollableFrame(self.colour_list_parent, corner_radius=0, scrollbar_button_color="Gray17")
-		frame.grid_columnconfigure(0,weight=1)
-		frame.configure()
-
-		#Saves frame in 
-		colour_array = []
-
-		self.colour_buttons_list_parent.append(colour_array)
-
-		self.colours_list_frame_array.append(frame)
-		self.place_frame(frame)
-		
+			
 	def update(self):
-		current_frame_index = self.colours_list_frame_array.index(self.current_frame)
-		colors = self.colour_buttons_list_parent[current_frame_index]
+		current_frame_index = self.current_frame_place()
+		colors = self.colour_parent_array[current_frame_index]
 		temp_array = []
 		for button in colors:
 			color = button.cget("fg_color")
 			temp_array.append(color)
+		#print(temp_array)
 		color_gen = ColorGenerator()		
 		image = color_gen.create_color_image(temp_array)
 		self.update_preview_image(image)
 
 	def save_pallet(self,place,name):
-		print("")
-		# add save location
+		print("Saving                 ")
+		print(self.current_colour_array())
+		temp_array = []
+		for item in self.current_colour_array():
+			color = item.cget("fg_color")
+			temp_array.append(color)
+		ColorGenerator.save_colors_to_file(self,temp_array,name,place)
 
-		print("Shit")
-	def change_frame(self,where):
+
+	
+	def current_frame_place(self):
+		place = self.colour_pallets_frames.index(self.current_frame)
+		return place
+
+	def current_frame_event(self):
+		frame_place = self.current_frame_place()
+
+		frame = self.colour_pallets_frames[frame_place]
+		self.current_frame = frame
+		return frame
+
+	def current_colour_array(self):
+
+		pos = self.current_frame_place()
+
+		if self.colour_parent_array:
+			array = self.colour_parent_array[pos]
+			return array
 		
+		self.colour_parent_array.append(self.colour_array)
+		array = self.colour_parent_array[pos]
+		return array
 		
-		current_frame_place = self.colours_list_frame_array.index(self.current_frame) +1
-		current_array = self.colour_buttons_list_parent[current_frame_place-1]
+	def _colour(self,command):
+		if command == "add":self.add_color
+		if command == "edit":self.edit_colour
+		if command == "remove":self.remove_colour
 
-		print(f'{self.current_frame} {self.colours_list_frame_array[current_frame_place-1]}')
-		print(len(current_array))
+	def _frame(self,frame=None,command = None,where = None):
 
+		current_array = self.current_colour_array()
 
-		if len(current_array)==0:
-			print("Destroy")
-			self.current_frame.destroy()
-			self.colours_list_frame_array.remove(self.current_frame)
+		if frame == None:
+			frame = self.current_frame_event()
 
-		if len(self.colours_list_frame_array) <= current_frame_place + where -1:
-			self.add_colour_list_frame(current_frame_place)
-		else:
-			frame = self.colours_list_frame_array[current_frame_place + where -1]
-			self.place_frame(frame)
-			self.update()
-
-		colour_buttons_list= self.colour_buttons_list_parent[self.colours_list_frame_array.index(self.current_frame)]
-
-		"""for i, button in colour_buttons_list:
-			print("Grid")
-			button.grid_forget
-			button.grid(row=len(colour_buttons_list), column=0, pady=5,sticky="nswe")"""
+		if where == None: # when colours i called with where == None no frame will be placed or created
+			return
 		
+		if len(self.colour_pallets_frames) == self.current_frame_place() +1 and where == 1: # if frame is on last place of array and u wanna create a new one
+			
+			if(len(current_array) == 0): # if current frame has no colour no need for continueing
+				return
+			
+			self.add_colour_frame()
+			return
+
+		if self.current_frame_place == 0 and where == -1:# if u are on last frame in array and wanna go back no frame will be placed
+			return
+		
+		next_frame = self.colour_pallets_frames[self.current_frame_place()+ where]
+		self.place_frame(next_frame)
+
+		if(len(current_array) == 0):#if u wanna go back to an existing frame and current is empty
+
+			self.latest_new_frame.destroy()
+			array = self.colour_pallets_frames[:-1]
+			self.colour_pallets_frames = array
+
+		self.update()
+		
+
+	def add_colour_frame(self):
+		colour_array = []
+		# Creates new Frame
+		frame = ctk.CTkScrollableFrame(self.colour_list_parent, corner_radius=0, scrollbar_button_color="Gray17")
+		frame.grid_columnconfigure(0,weight=1)
+		self.current_frame = frame
+		self.colour_parent_array.append(colour_array)
+		self.colour_pallets_frames.append(frame)
+		self.place_frame(frame)
+		self.latest_new_frame = frame
+		#self.update()
+
+
 	def place_frame(self, frame):
 		frame.grid(row=0, column=0,sticky="nswe")
 		self.current_frame = frame
-		self.label_colour_pallet.configure(text=f'{"Colour Pallet"} {self.colours_list_frame_array.index(frame)+1}')
-		for i ,item in enumerate(self.colours_list_frame_array):		
+		frame_place = self.current_frame_place()
+		self.label_colour_pallet.configure(text=f'{"Colour Pallet"} {frame_place + 1}')
+		for i ,item in enumerate(self.colour_pallets_frames):		
 			if item != frame:
 				item.grid_forget()
 	
@@ -348,59 +389,57 @@ class ColourFramePallet(ctk.CTkFrame):
 
 
 	def add_color(self,color):
-		
-		colour_buttons_list = self.colour_buttons_list_parent[self.colours_list_frame_array.index(self.current_frame)]
-		
+		current_frame = self.current_frame
+		place = self.current_frame_place()
+		colour_array = self.colour_parent_array[place]
 
 		darker_color = self.darken_color(color)#calls function to make a darker version of color
-		colours_list_frame = self.current_frame
+	
 		# Creates button and places it
-		button = ctk.CTkButton(colours_list_frame, text=f"{color}", font=("_",15,"bold"), text_color="Black", corner_radius=6,fg_color=color,hover_color=darker_color)
-		button.grid(row=len(colour_buttons_list), column=0, pady=5,sticky="nswe")
+		button = ctk.CTkButton(current_frame, text=f"{color}", font=("_",15,"bold"), text_color="Black", corner_radius=6,fg_color=color,hover_color=darker_color)
+		button.grid(row=len(colour_array), column=0, pady=5,sticky="nswe")
 		button.configure(command=lambda btn=button: self.colour_choosen(btn,"change"))
 
 		# save button in array
 		
-		colour_buttons_list.append(button)
+		colour_array.append(button)
 		self.update()
 		self.after(10, lambda: self.hide_scrollbar("<Configure>"))
 
+	def colour_choosen(self, button_id, action):
+		self.change = action
 
-		
+		if action == "change": 
 
-	def colour_choosen(self, id, change):
-		self.change = change
-		if change == "change": 
+			if self.button_id is not None: 
+				self.button_id.configure(fg_color=self.last_fg_color, font=("_", 15, "bold"))
 
-			if self.button_id != None: 
-				self.button_id.configure(fg_color=self.last_fg_color,font=("_",15,"bold"))
+			self.button_id = button_id
+			hover_color = button_id.cget("hover_color")
+			self.last_fg_color = button_id.cget("fg_color")
+			button_id.configure(fg_color=hover_color, font=("_", 15, "bold", "underline"))
 
-			self.button_id = id
-			hover_color = id.cget("hover_color")
-			self.last_fg_color = id.cget("fg_color")
-			id.configure(fg_color=hover_color,font=("_",15,"bold","underline"))
-
-		if change == "delete":self.delete_color(self.button_id)
-		if change == "edit":self.edit_button(self.button_id)
+		if action == "delete":self.delete_color(self.button_id)
+		if action == "edit":self.edit_button(self.button_id)
 		
 	def delete_color(self, item):
         # Find the index of the button in the list
-		colour_buttons_list = self.colour_buttons_list_parent[self.colours_list_frame_array.index(self.current_frame)]
-		last = colour_buttons_list[-1]
+		colour_list = self.current_colour_array()
+		last = colour_list[-1]
 		
 
 		# if Button was Pressed delet last pressed button
 		if item != None: 
 			item.destroy()
 
-			colour_buttons_list.remove(item)
+			colour_list.remove(item)
 			self.button_id = None
 		
-		# if Button wasnt pressed delet last button in list
+		# if Button wasnt pressed delete last button in list
 		else:
 
 			last.destroy()
-			colour_buttons_list.remove(last)
+			colour_list.remove(last)
 
 		self.hide_scrollbar("<Configure>")
 		self.update()
@@ -410,14 +449,12 @@ class ColourFramePallet(ctk.CTkFrame):
 		if button:
 			pick_color = AskColor() # open the color picker
 			color = pick_color.get() # get the color string
-
-
 			darker_color = self.darken_color(color)
 			button.configure(fg_color=color,hover_color=darker_color)
+			self.last_fg_color = color
 			self.update()
 
-			
-		
+
 	def darken_color(self, hex_color, factor=0.7):
     	# Convert hex color to RGB
 
@@ -434,7 +471,6 @@ class ColourFramePallet(ctk.CTkFrame):
 
 		return darkened_hex
 
-
 	def hide_scrollbar(self,event):
 
 		#print(self.current_frame.winfo_height())
@@ -447,14 +483,14 @@ class ColourFramePallet(ctk.CTkFrame):
 
 
 class ColourFramePreview(ctk.CTkFrame):
-	def __init__(self,master, **kwargs):
+	def __init__(self,master,create_pallet_event,folder_path, **kwargs):
 		super().__init__(master, **kwargs)
 
 		
 
 		
-
-
+		self.folder_path = folder_path
+		self.create_pallet_event = create_pallet_event
 		self.grid_columnconfigure((0,2), minsize=50)
 		self.grid_columnconfigure((1),weight=1, minsize=51)
 		self.grid_rowconfigure((0,2),weight=0)
@@ -478,7 +514,8 @@ class ColourFramePreview(ctk.CTkFrame):
 
 
 	def create(self):
-		self.create_final_pallet = CreateFinalPallet(master=self)
+		self.create_final_pallet = CreateFinalPallet(master=self,create_pallet_event = self.create_pallet_event,directory = self.folder_path)
+		self.create_final_pallet.lift()
 
 	def update(self,image):
 		self.preview_image = image
@@ -513,33 +550,55 @@ class ColourFramePreview(ctk.CTkFrame):
 
 
 class CreateFinalPallet(ctk.CTkToplevel):
-	def __init__(self, master, **kwargs):
-		super().__init__(master, **kwargs)
+	def __init__(self,
+				 master,
+				 create_pallet_event,
+				 directory: str = "Set Directory", 
+				 **kwargs):
+		super().__init__(master,**kwargs)
 		self.title("Create Pallet")
-		self.geometry("500x300+300+300")
+		self.geometry("500x200+600+300")
 		self.grid_rowconfigure(0,weight=1)
 		self.grid_columnconfigure(0,weight=1)
 
 		screen_width = self.winfo_screenwidth()
 		screen_height = self.winfo_screenheight()
 
-		x_coordinate = (screen_width - 500) // 2
-		y_coordinate = (screen_height - 200) // 2
+		x_coordinate = (screen_width) // 2
+		y_coordinate = (screen_height) // 2
 
 		self.main_frame = ctk.CTkFrame(self,fg_color="transparent")
 		self.main_frame.grid(row=0,column=0,sticky="nswe")
-		self.main_frame.grid_rowconfigure((0),weight=0)
-		self.main_frame.grid_rowconfigure((1,2),weight=1)
-		self.main_frame.grid_columnconfigure(1,weight=1)
+		#self.main_frame.grid_rowconfigure((),weight=0)
+		self.main_frame.grid_rowconfigure((0,1,2),weight=0)
+		self.main_frame.grid_columnconfigure(1,weight=0)
 
-		self.name_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Pallets Name",font=("_",30),width=200)
-		self.name_entry.grid(row=1,column=1,padx=150,pady=(15,5),sticky="sew")
+		self.create_pallet_event = create_pallet_event
+		self.directory = directory
+		self.set_directory = directory
 
-		self.done_button = ctk.CTkButton(self.main_frame,text="Done",command=self.done_event,font=("_",30,"bold","italic"),fg_color="Gray25",hover_color="Gray30")
-		self.done_button.grid(row=2,column=1,padx=150,pady=(5,15),sticky="new")
-		self.attributes("-topmost", True)
+		self.change_directory = ctk.CTkButton(self.main_frame, text=self.directory, font=("_",12,"roman"),fg_color="Gray17",border_color="Gray70",border_width=2,height=35,command=self.set_directory_event,hover_color="Gray24")
+		self.change_directory.grid(row=0,column=1,padx=50,pady=(40,5),sticky="nsew")
+
+		self.name_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Pallets Name",font=("_",25),width=400,height=35,border_color="Gray70")
+		self.name_entry.grid(row=1,column=1,padx=50,pady=(5,5),sticky="nsew")
+
+		self.done_button = ctk.CTkButton(self.main_frame,text="Done",command=self.done_event,font=("_",25,"bold","italic"),fg_color="Gray20",hover_color="Gray24",height=35,border_color="Gray70",border_width=2)
+		self.done_button.grid(row=2,column=1,padx=50,pady=(5,15),sticky="nsew")
+
+
+		self.after(1,self.lift)
+
+	def set_directory_event(self):
+		self.directory = filedialog.askdirectory()
+		print(self.directory)
+		
+		self.change_directory.configure(text=self.directory,font=("_",12))
+		self.after(1,self.lift())
 
 	def done_event(self):
+		name = self.name_entry.get()
+		self.create_pallet_event(name,self.directory)
 		print(self.name_entry.get())
 		
 
@@ -552,14 +611,16 @@ class App(ctk.CTk):
 	
 		# Configure Window
 		self.title("Colour picker")
-		self.geometry(f"{WSDefaultx}x{WSDefaulty}")
+		self.geometry(f"{580}x{1100}")
 
 		# Configure grid layout (4x4)
 		self.grid_columnconfigure((1), weight=1)
 		self.grid_columnconfigure((2), weight=0)
 		self.grid_rowconfigure((0), weight=1)
 		self.grid_rowconfigure((1), weight=0)
-	
+
+
+		self.folder_path = self.search_folder()
 
 		# load files(images and modes and configs)
 		image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Files")
@@ -571,7 +632,7 @@ class App(ctk.CTk):
 		self.original_image = Image.open(os.path.join(image_path, "Preview_test.png"))
 		self.right_arrow_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path,"right-arrow_light.png")),light_image=Image.open(os.path.join(image_path,"right-arrow.png")))
 		self.left_arrow_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path,"left-arrow_light.png")),light_image=Image.open(os.path.join(image_path,"left-arrow.png")))
-
+		self.location = None
 
 
 		# Setting up Frames
@@ -612,7 +673,7 @@ class App(ctk.CTk):
 			)
 		self.colour_frame_pallet.grid(row=0, column=1, padx=10, pady=20, sticky="nswe")
 		
-		self.colour_frame_preview = ColourFramePreview(master=self.colour_frame, corner_radius=6)
+		self.colour_frame_preview = ColourFramePreview(master=self.colour_frame,create_pallet_event=self.create_pallet_event,folder_path = self.folder_path, corner_radius=6)
 		self.colour_frame_preview.grid(row=0, column=0, padx=10, pady=20, sticky="nswe")
 
 		self.colour_frame_settings = ColourFrameSettings(master=self.colour_frame, corner_radius=6, colour_frame_pallet=self.colour_frame_pallet)
@@ -625,11 +686,12 @@ class App(ctk.CTk):
 		
 
 		# Set Defaults
+		
 		self.select_frame_by_name("home")
+		self.search_folder()
 
 	def home_button_event(self):
 		self.select_frame_by_name("home")
-		print("home button pressed !!")
 
 	def settings_button_event(self):
 		self.select_frame_by_name("settings")
@@ -640,13 +702,13 @@ class App(ctk.CTk):
 	def Debug_array(self,array):
 		print(array)
 
-	def create_pallet_event(self,name):
-		location = self.location
+	def create_pallet_event(self,name,location):
+		location = self.search_folder()if self.search_folder() else location
+		print(location)
 		self.colour_frame_pallet.save_pallet(location,name)
 
 
 	def update_preview_image(self,image):
-		print("preview")
 		new_image = image
 		self.colour_frame_preview.update(new_image)
 
@@ -677,6 +739,26 @@ class App(ctk.CTk):
 			self.settings_frame.grid(row=0, column=1, sticky="nsew")
 		else:
 			self.settings_frame.grid_forget() 
+
+	def search_folder(self):
+		username = getpass.getuser()
+
+		# Construct the path to AppData\Roaming
+		appdata_path = os.path.join("C:\\", "Users", username, "AppData", "Roaming", "SoundSpacePlus", "colorsets")
+
+		print(appdata_path)
+		# Construct the full path to the target folder
+
+		# Check if the folder exists
+		if os.path.exists(appdata_path):
+			print("found")
+			
+			self.folder_path = appdata_path
+			return(appdata_path)
+		else:
+			return None
+
+
 
 
 
