@@ -156,6 +156,8 @@ class HomeFrame(ctk.CTkFrame):
 		self.button_1 = ctk.CTkButton(self,corner_radius=5, text = "Button1", font=("_",20),)
 		self.button_1.grid(row=1, column=0, sticky="nsew", pady=4, padx=20)
 
+		self.textbox.insert("0.0", "Some Help\n\n"+"on the left side bar the only funtional button is colours the rest is nonsense for now i think lol anyways when colours pressed a frame pops up where u have an empty pallet u can just add colours to it then press in the preview on Create folder shoul be set if not just click on it and select ur self enter name and Done.\n\n"+"in the poped up frame u have on the right settings also not done tho one actually work even if he isnt helping u anyways lol")
+
 
 class SettingsFrame(ctk.CTkFrame):
 	def __init__(self,master, **kwargs):
@@ -611,7 +613,7 @@ class App(ctk.CTk):
 	
 		# Configure Window
 		self.title("Colour picker")
-		self.geometry(f"{580}x{1100}")
+		self.geometry(f"{1100}x{580}")
 
 		# Configure grid layout (4x4)
 		self.grid_columnconfigure((1), weight=1)
