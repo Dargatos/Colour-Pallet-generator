@@ -768,9 +768,12 @@ class App(ctk.CTk):
 	def quit_event(self):
 		print("Quit")
 		self.destroy()
-
+		
+def main():
+    app = App()
+    app.mainloop()
+	
 if __name__ == "__main__":
-		app = App()
-		app.mainloop()
+    main()
 
 
