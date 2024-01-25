@@ -172,7 +172,7 @@ class SettingsFrame(ctk.CTkFrame):
 
 
 class ColourFramePallet(ctk.CTkFrame):
-	def __init__(self,master,debug_array,right_arrow_image,left_arrow_image,update_preview_image, **kwargs):
+	def __init__(self,master,right_arrow_image,left_arrow_image,update_preview_image, **kwargs):
 		super().__init__(master, **kwargs)
 
 		self.grid_rowconfigure((0,2),weight=0)
@@ -187,19 +187,12 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.colour_pallets_frames = []
 		self.colour_parent_array =[]
 		self.colour_array = []
-		self.latest_new_frame= None
 
-		self.colour_buttons_list_parent = []
-		self.colours_list_frame_array = []
-		self.colour_buttons_list = []
+		self.latest_new_frame= None
 		self.button_id = None
 		self.last_fg_color = None
-		self.current_pallet = 0
 		self.current_frame = None
-
-	
-		self.debug_array = debug_array
-
+		self.gradient_lenght = 10
 		self.label_colour_pallet = ctk.CTkLabel(self, corner_radius=0, text=f'{"Color Pallet"} {self.current_frame}',font=("_",20,"bold"),fg_color="transparent",width=10)
 		self.label_colour_pallet.grid(row=0, column=0, columnspan=3, sticky="nswe", padx=20, pady=(10,0))
 
@@ -260,13 +253,13 @@ class ColourFramePallet(ctk.CTkFrame):
 
 
 	def printarray(self):
-		current_frame_index = self.colours_list_frame_array.index(self.current_frame)
-		button_list = self.colour_buttons_list_parent[current_frame_index]
+		colors = self.current_colour_array()
+		place = self.current_frame_place()
 		temp_array = []
-		for button in button_list:
+		for button in colors:
 			color = button.cget("fg_color")
 			temp_array.append(color)
-		print(f'{"Array"}{current_frame_index + 1}{temp_array}')
+		print(f'{"Array"}{place + 1}{temp_array}')
 		
 
 	def multiple_pallets_button(self,value):
@@ -279,8 +272,7 @@ class ColourFramePallet(ctk.CTkFrame):
 			self.previous_pallet_button.grid_forget()
 			
 	def update(self):
-		current_frame_index = self.current_frame_place()
-		colors = self.colour_parent_array[current_frame_index]
+		colors = self.current_colour_array()
 		temp_array = []
 		for button in colors:
 			color = button.cget("fg_color")
@@ -290,11 +282,14 @@ class ColourFramePallet(ctk.CTkFrame):
 		image = color_gen.create_color_image(temp_array)
 		self.update_preview_image(image)
 
-	def save_pallet(self,place,name):
+	def save_pallet(self,place,name,settings=None):
+		if "gradient" in settings:
+			colors = ColorGenerator.generate_gradient_colors(self.current_colour_array,self.gradient_lenght)
+		else: color = self.current_colour_array()
 		print("Saving                 ")
 		print(self.current_colour_array())
 		temp_array = []
-		for item in self.current_colour_array():
+		for item in colors:
 			color = item.cget("fg_color")
 			temp_array.append(color)
 		ColorGenerator.save_colors_to_file(self,temp_array,name,place)
@@ -412,6 +407,7 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.change = action
 
 		if action == "change": 
+			
 
 			if self.button_id is not None: 
 				self.button_id.configure(fg_color=self.last_fg_color, font=("_", 15, "bold"))
@@ -490,7 +486,7 @@ class ColourFramePreview(ctk.CTkFrame):
 
 		
 
-		
+		self.preview_image = None
 		self.folder_path = folder_path
 		self.create_pallet_event = create_pallet_event
 		self.grid_columnconfigure((0,2), minsize=50)
@@ -525,6 +521,9 @@ class ColourFramePreview(ctk.CTkFrame):
 		
 
 	def resize(self, event=None):
+
+		if self.preview_image is None:
+			return
 		
 		if event:
 			new_width = event.width 
@@ -534,6 +533,7 @@ class ColourFramePreview(ctk.CTkFrame):
 			new_width = self.preview_image_label.winfo_width()	
 		min_size  = min(new_width, new_height) * 0.9
 		size = (int(min_size), int(min_size)) 
+
 		resized = self.preview_image.resize((size))
 
 		blank_image = Image.new("RGBA", (self.preview_image_label.winfo_width(), self.preview_image_label.winfo_height()), (0, 0, 0, 0))
@@ -558,10 +558,17 @@ class CreateFinalPallet(ctk.CTkToplevel):
 				 directory: str = "Set Directory", 
 				 **kwargs):
 		super().__init__(master,**kwargs)
+
+
+		image_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Files")
+		self.folder = ctk.CTkImage(light_image=Image.open(os.path.join(image_path,"folder-dark.png")),dark_image=Image.open(os.path.join(image_path,"folder-light.png")))
+
 		self.title("Create Pallet")
-		self.geometry("500x200+600+300")
+		self.geometry("550x200+600+300")
+		self.resizable(width=False,height=False)
 		self.grid_rowconfigure(0,weight=1)
 		self.grid_columnconfigure(0,weight=1)
+
 
 		screen_width = self.winfo_screenwidth()
 		screen_height = self.winfo_screenheight()
@@ -579,17 +586,22 @@ class CreateFinalPallet(ctk.CTkToplevel):
 		self.directory = directory
 		self.set_directory = directory
 
-		self.change_directory = ctk.CTkButton(self.main_frame, text=self.directory, font=("_",12,"roman"),fg_color="Gray17",border_color="Gray70",border_width=2,height=35,command=self.set_directory_event,hover_color="Gray24")
-		self.change_directory.grid(row=0,column=1,padx=50,pady=(40,5),sticky="nsew")
+		self.label = ctk.CTkLabel(self.main_frame,text="Create Colorset",font=("",25,"bold","underline"))
+		self.label.grid(row=0,column=1,padx=50,pady=(10,5),sticky="nsew")
 
-		self.name_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Pallets Name",font=("_",25),width=400,height=35,border_color="Gray70")
-		self.name_entry.grid(row=1,column=1,padx=50,pady=(5,5),sticky="nsew")
+		self.change_directory = ctk.CTkButton(self.main_frame, text=self.directory, font=("_",13,"roman"),fg_color="Gray15",border_color="Gray70",border_width=2,height=40,command=self.set_directory_event,hover_color="Gray24",image=self.folder,anchor="w",compound="left",width=450)
+		self.change_directory.grid(row=1,column=1,padx=50,pady=(5,5),sticky="")
 
-		self.done_button = ctk.CTkButton(self.main_frame,text="Done",command=self.done_event,font=("_",25,"bold","italic"),fg_color="Gray20",hover_color="Gray24",height=35,border_color="Gray70",border_width=2)
-		self.done_button.grid(row=2,column=1,padx=50,pady=(5,15),sticky="nsew")
+		self.name_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Name",font=("_",22),width=450,height=35,border_color="Gray70")
+		self.name_entry.grid(row=2,column=1,padx=50,pady=(5,5),sticky="")
 
 
-		self.after(1,self.lift)
+		self.done_button = ctk.CTkButton(self.main_frame,text="Save",command=self.done_event,font=("_",25,"bold","italic"),fg_color="Gray15",hover_color="Gray24",height=35,border_color="Gray70",border_width=2,width=450)
+		self.done_button.grid(row=3,column=1,padx=50,pady=(5,15),sticky="")
+
+
+		self.after(50,self.lift)
+		self.lift()
 
 	def set_directory_event(self):
 		self.directory = filedialog.askdirectory()
@@ -630,10 +642,9 @@ class App(ctk.CTk):
 		self.home_image = ctk.CTkImage(light_image=Image.open(os.path.join(image_path, "home_dark.png")),dark_image=Image.open(os.path.join(image_path, "home_light.png")), size=(20, 20))
 		self.art_pallet_image = ctk.CTkImage(light_image=Image.open(os.path.join(image_path, "Art_Pallet_dark.png")),dark_image=Image.open(os.path.join(image_path, "Art_Pallet_light.png")), size=(20, 20))                                              
 		self.settings_image = ctk.CTkImage(light_image=Image.open(os.path.join(image_path, "Settings_dark.png")),dark_image=Image.open(os.path.join(image_path, "Settings_light.png")), size=(20, 20))                                            
-		self.preview_test_image = ctk.CTkImage(Image.open(os.path.join(image_path, "Preview_test.png")))
-		self.original_image = Image.open(os.path.join(image_path, "Preview_test.png"))
 		self.right_arrow_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path,"right-arrow_light.png")),light_image=Image.open(os.path.join(image_path,"right-arrow.png")))
 		self.left_arrow_image = ctk.CTkImage(dark_image=Image.open(os.path.join(image_path,"left-arrow_light.png")),light_image=Image.open(os.path.join(image_path,"left-arrow.png")))
+		self.folder = ctk.CTkImage(light_image=Image.open(os.path.join(image_path,"file-and-folder-dark.png")),dark_image=Image.open(os.path.join(image_path,"file-and-folder-dark.png")))
 		self.location = None
 
 
@@ -665,10 +676,8 @@ class App(ctk.CTk):
 		self.colour_frame.grid_columnconfigure((1,2),weight=0)
 
 
-
 		self.colour_frame_pallet = ColourFramePallet(
 			master=self.colour_frame, corner_radius=6, 
-			debug_array=self.Debug_array,
 			left_arrow_image=self.left_arrow_image,
 			right_arrow_image=self.right_arrow_image,
 			update_preview_image = self.update_preview_image,
@@ -701,8 +710,6 @@ class App(ctk.CTk):
 	def colours_button_event(self):
 		self.select_frame_by_name("colour")
 
-	def Debug_array(self,array):
-		print(array)
 
 	def create_pallet_event(self,name,location):
 		location = self.search_folder()if self.search_folder() else location
@@ -748,14 +755,8 @@ class App(ctk.CTk):
 		# Construct the path to AppData\Roaming
 		appdata_path = os.path.join("C:\\", "Users", username, "AppData", "Roaming", "SoundSpacePlus", "colorsets")
 
-		print(appdata_path)
-		# Construct the full path to the target folder
-
 		# Check if the folder exists
 		if os.path.exists(appdata_path):
-			print("found")
-			
-			self.folder_path = appdata_path
 			return(appdata_path)
 		else:
 			return None
