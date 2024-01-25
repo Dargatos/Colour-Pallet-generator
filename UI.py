@@ -48,8 +48,8 @@ class NavigatioFrame(ctk.CTkFrame):
 			border_spacing=10, 
 			text="Home",
 			fg_color="transparent", 
-			text_color=("_", "White"),
-			hover_color=("_", "gray20"), 
+			text_color=("White"),
+			hover_color=("gray20"), 
 			anchor="w",
 			image=self.home_image,
 			command=self.home_button_event
@@ -61,8 +61,8 @@ class NavigatioFrame(ctk.CTkFrame):
 			corner_radius=0,height=40, 
 			border_spacing=10, text="Colours",
 			fg_color="transparent", 
-			text_color=("_", "White"),
-			hover_color=("_", "gray20"), 
+			text_color=("White"),
+			hover_color=("gray20"), 
 			anchor="w",
 			image=self.art_pallet_image,
 			command=self.colours_button_event
@@ -76,8 +76,8 @@ class NavigatioFrame(ctk.CTkFrame):
 			border_spacing=10, 
 			text="Settings",
 			fg_color="transparent", 
-			text_color=("_", "White"),
-			hover_color=("_", "gray20"), 
+			text_color=("White"),
+			hover_color=("gray20"), 
 			anchor="w",
 			image=self.settings_image,
 			command=self.settings_button_event
@@ -90,8 +90,8 @@ class NavigatioFrame(ctk.CTkFrame):
 			border_spacing=10, 
 			text="Extra(Test,Debug)",
 			fg_color="transparent", 
-			text_color=("_", "White"),
-			hover_color=("_", "gray20"), 
+			text_color=("White"),
+			hover_color=("gray20"), 
 			anchor="w",
 			command=self.debug_command
 			)
