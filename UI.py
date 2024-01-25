@@ -283,9 +283,12 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.update_preview_image(image)
 
 	def save_pallet(self,place,name,settings=None):
+		"""		
 		if "gradient" in settings:
 			colors = ColorGenerator.generate_gradient_colors(self.current_colour_array,self.gradient_lenght)
 		else: color = self.current_colour_array()
+		"""
+		colors = self.current_colour_array()
 		print("Saving                 ")
 		print(self.current_colour_array())
 		temp_array = []
@@ -583,6 +586,8 @@ class CreateFinalPallet(ctk.CTkToplevel):
 		self.main_frame.grid_columnconfigure(1,weight=0)
 
 		self.create_pallet_event = create_pallet_event
+
+	
 		self.directory = directory
 		self.set_directory = directory
 
@@ -604,15 +609,15 @@ class CreateFinalPallet(ctk.CTkToplevel):
 		self.lift()
 
 	def set_directory_event(self):
-		self.directory = filedialog.askdirectory()
-		print(self.directory)
-		
-		self.change_directory.configure(text=self.directory,font=("_",12))
+		directory = filedialog.askdirectory()
+		self.set_directory = directory
+		self.change_directory.configure(text=self.set_directory,font=("_",12))
 		self.after(1,self.lift())
 
 	def done_event(self):
 		name = self.name_entry.get()
-		self.create_pallet_event(name,self.directory)
+		print("yy",self.set_directory)
+		self.create_pallet_event(name,self.set_directory)
 		print(self.name_entry.get())
 		
 
@@ -712,7 +717,7 @@ class App(ctk.CTk):
 
 
 	def create_pallet_event(self,name,location):
-		location = self.search_folder()if self.search_folder() else location
+		#location = self.search_folder()if self.search_folder() else location
 		print(location)
 		self.colour_frame_pallet.save_pallet(location,name)
 
