@@ -115,6 +115,7 @@ class ColourFrameSettings(ctk.CTkFrame):
 		
 		self.colour_frame_pallet = colour_frame_pallet
 
+		self.gradient_var = tk.BooleanVar(value=False)
 		self.checkbox_var = tk.StringVar()
 		self.rowconfigure((0), weight=0)
 		self.rowconfigure((1,2,3,4), weight=0)
@@ -122,15 +123,36 @@ class ColourFrameSettings(ctk.CTkFrame):
 		self.label_colour_settings = ctk.CTkLabel(self, corner_radius=50, text="Colour Settings", font=("_",20,"bold"), anchor="w")
 		self.label_colour_settings.grid(row=0, column=0, sticky="swen", padx=10, pady=4)
 
-		self.gradient_button = ctk.CTkCheckBox(self, text="gradient")
-		self.gradient_button.grid(row=1, column=0,sticky="nsew", padx=15, pady=4)
 
-		self.multiple_pallets_button = ctk.CTkCheckBox(self, text="Alternate Color Themes",onvalue="On",offvalue="Off",command=self.button_clicked,variable=self.checkbox_var)
+		self.gradient_frame = ctk.CTkFrame(self,corner_radius=0,fg_color="Gray20")
+		self.gradient_frame.grid(row=1, column=0,sticky="nsew", padx=15, pady=4)
+		self.gradient_frame.grid_columnconfigure((0,1),weight=1)
+		self.gradient_button = ctk.CTkCheckBox(self.gradient_frame, text="Gradient",border_color="White",variable=self.gradient_var,text_color="White",width=30,command=lambda: self.set_settings("gradient_button",self.gradient_var.get()))
+		self.gradient_button.grid(row=0, column=0,sticky="nsew", padx=(0,5))
+		self.gradient_value = ctk.CTkEntry(self.gradient_frame,placeholder_text="10",fg_color="Gray20",border_color="Gray20",width=30,font=("_",15),text_color="White")
+		self.gradient_value.configure(state="disabled") # making state disabled in the beginning makes the placeholder text disappear
+		self.gradient_value.grid(row=0, column=1, sticky="nswe",padx=(5,0))
+
+
+		self.multiple_pallets_button = ctk.CTkCheckBox(self, text="Alternate Color Themes",onvalue="On",border_color="White",offvalue="Off",text_color="White",command=self.button_clicked,variable=self.checkbox_var)
 		self.multiple_pallets_button.grid(row=2, column=0, sticky="nswe", padx=15, pady=4)
 
 	def button_clicked(self):
 		current_value = self.checkbox_var.get()
 		self.colour_frame_pallet.multiple_pallets_button(current_value)
+
+	def set_settings(self,button,value):
+		#print(value)
+		self.colour_frame_pallet.set_settings(button,value)
+		if button == "gradient_button":
+			if value == True:
+				self.gradient_value.configure(fg_color="Gray22",border_color="Gray22",state="normal")
+			else: self.gradient_value.configure(fg_color="Gray20",border_color="Gray20",state="disabled")
+				
+	def gradient_length(self):
+		value = self.gradient_value.get()
+		return value
+
 
 
 class HomeFrame(ctk.CTkFrame):
@@ -172,7 +194,7 @@ class SettingsFrame(ctk.CTkFrame):
 
 
 class ColourFramePallet(ctk.CTkFrame):
-	def __init__(self,master,right_arrow_image,left_arrow_image,update_preview_image, **kwargs):
+	def __init__(self,master,right_arrow_image,left_arrow_image,update_preview_image,gradient_length, **kwargs):
 		super().__init__(master, **kwargs)
 
 		self.grid_rowconfigure((0,2),weight=0)
@@ -182,6 +204,7 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.update_preview_image = update_preview_image
 		self.right_arrow_image = right_arrow_image
 		self.left_arrow_image = left_arrow_image
+		self.gradient_length = gradient_length
 
 
 		self.colour_pallets_frames = []
@@ -192,6 +215,13 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.button_id = None
 		self.last_fg_color = None
 		self.current_frame = None
+
+
+		self.gradient_button = False
+		
+
+
+
 		self.gradient_lenght = 10
 		self.label_colour_pallet = ctk.CTkLabel(self, corner_radius=0, text=f'{"Color Pallet"} {self.current_frame}',font=("_",20,"bold"),fg_color="transparent",width=10)
 		self.label_colour_pallet.grid(row=0, column=0, columnspan=3, sticky="nswe", padx=20, pady=(10,0))
@@ -251,7 +281,12 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.add_colour_frame()
 		self.bind("<Configure>", self.hide_scrollbar)
 
+	def set_settings(self,button,value):
 
+		setattr(self, f"{button}", value)
+		print(self.gradient_button)
+
+		
 	def printarray(self):
 		colors = self.current_colour_array()
 		place = self.current_frame_place()
@@ -282,19 +317,25 @@ class ColourFramePallet(ctk.CTkFrame):
 		image = color_gen.create_color_image(temp_array)
 		self.update_preview_image(image)
 
-	def save_pallet(self,place,name,settings=None):
-		"""		
-		if "gradient" in settings:
-			colors = ColorGenerator.generate_gradient_colors(self.current_colour_array,self.gradient_lenght)
-		else: color = self.current_colour_array()
-		"""
+	def save_pallet(self,place,name):
+
+	
+		
+
 		colors = self.current_colour_array()
 		print("Saving                 ")
-		print(self.current_colour_array())
 		temp_array = []
 		for item in colors:
 			color = item.cget("fg_color")
 			temp_array.append(color)
+
+		if self.gradient_button == True:
+			lenght = self.gradient_length
+			print(lenght())
+			print("Its True")
+			temp_array = ColorGenerator.generate_gradient_colors(self,temp_array,self.gradient_lenght)
+
+
 		ColorGenerator.save_colors_to_file(self,temp_array,name,place)
 
 
@@ -587,9 +628,9 @@ class CreateFinalPallet(ctk.CTkToplevel):
 
 		self.create_pallet_event = create_pallet_event
 
-	
-		self.directory = directory
-		self.set_directory = directory
+		if directory == None: self.directory = "Set Directory"
+		else:self.directory = directory
+
 
 		self.label = ctk.CTkLabel(self.main_frame,text="Create Colorset",font=("",25,"bold","underline"))
 		self.label.grid(row=0,column=1,padx=50,pady=(10,5),sticky="nsew")
@@ -610,14 +651,15 @@ class CreateFinalPallet(ctk.CTkToplevel):
 
 	def set_directory_event(self):
 		directory = filedialog.askdirectory()
-		self.set_directory = directory
-		self.change_directory.configure(text=self.set_directory,font=("_",12))
+		if directory == None: directory = "Choose Directoy"
+		self.directory = directory
+		self.change_directory.configure(text=self.directory,font=("_",12))
 		self.after(1,self.lift())
 
 	def done_event(self):
 		name = self.name_entry.get()
-		print("yy",self.set_directory)
-		self.create_pallet_event(name,self.set_directory)
+		print("yy",self.directory)
+		self.create_pallet_event(name,self.directory)
 		print(self.name_entry.get())
 		
 
@@ -638,7 +680,7 @@ class App(ctk.CTk):
 		self.grid_rowconfigure((0), weight=1)
 		self.grid_rowconfigure((1), weight=0)
 
-
+		
 		self.folder_path = self.search_folder()
 
 		# load files(images and modes and configs)
@@ -686,6 +728,7 @@ class App(ctk.CTk):
 			left_arrow_image=self.left_arrow_image,
 			right_arrow_image=self.right_arrow_image,
 			update_preview_image = self.update_preview_image,
+			gradient_length = self.gradient_length,
 			)
 		self.colour_frame_pallet.grid(row=0, column=1, padx=10, pady=20, sticky="nswe")
 		
@@ -721,6 +764,9 @@ class App(ctk.CTk):
 		print(location)
 		self.colour_frame_pallet.save_pallet(location,name)
 
+	def gradient_length(self):
+		value = ColourFrameSettings.gradient_length(self)
+		return value
 
 	def update_preview_image(self,image):
 		new_image = image
@@ -753,6 +799,9 @@ class App(ctk.CTk):
 			self.settings_frame.grid(row=0, column=1, sticky="nsew")
 		else:
 			self.settings_frame.grid_forget() 
+	
+	def set_settings(self,array):
+		self.settings = array
 
 	def search_folder(self):
 		username = getpass.getuser()

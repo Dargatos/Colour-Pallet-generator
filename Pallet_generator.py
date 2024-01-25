@@ -20,7 +20,7 @@ class ColorGenerator:
     def generate_gradient_colors(self, reference_colors, num_colors):
         num_refs = len(reference_colors)
         colors = []
-
+        print(reference_colors)
         for i in range(num_colors):
             hue = i / float(num_colors-1)
             ref_index = int(hue * (num_refs - 1))
