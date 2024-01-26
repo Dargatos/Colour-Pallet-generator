@@ -10,6 +10,8 @@ from ctk_color_picker import *
 
 # Yeah thas the code for UI not Pretty and way to less comments to understand that mess by questions if have dicord or via issues on github lol
 
+
+
 class NavigatioFrame(ctk.CTkFrame):
 	def __init__(
 			self, 
@@ -114,6 +116,7 @@ class ColourFrameSettings(ctk.CTkFrame):
 		super().__init__(master, **kwargs)
 		
 		self.colour_frame_pallet = colour_frame_pallet
+		self.send_len = False
 
 		self.gradient_var = tk.BooleanVar(value=False)
 		self.checkbox_var = tk.StringVar()
@@ -127,11 +130,12 @@ class ColourFrameSettings(ctk.CTkFrame):
 		self.gradient_frame = ctk.CTkFrame(self,corner_radius=0,fg_color="Gray20")
 		self.gradient_frame.grid(row=1, column=0,sticky="nsew", padx=15, pady=4)
 		self.gradient_frame.grid_columnconfigure((0,1),weight=1)
-		self.gradient_button = ctk.CTkCheckBox(self.gradient_frame, text="Gradient",border_color="White",variable=self.gradient_var,text_color="White",width=30,command=lambda: self.set_settings("gradient_button",self.gradient_var.get()))
-		self.gradient_button.grid(row=0, column=0,sticky="nsew", padx=(0,5))
-		self.gradient_value = ctk.CTkEntry(self.gradient_frame,placeholder_text="10",fg_color="Gray20",border_color="Gray20",width=30,font=("_",15),text_color="White")
+		self.gradient_button = ctk.CTkCheckBox(self.gradient_frame, text="Gradient",border_color="White",variable=self.gradient_var,text_color="White",width=10,command=lambda: self.set_settings("gradient_button",self.gradient_var.get()))
+		self.gradient_button.grid(row=0, column=0,sticky="nsew", padx=(0,0))
+		self.gradient_value = ctk.CTkTextbox(self.gradient_frame,fg_color="Gray20",border_color="Gray20",width=30,font=("_",15),text_color="White",activate_scrollbars=False,wrap=None,height=5)
+		self.gradient_value.insert("0.0",10)
 		self.gradient_value.configure(state="disabled") # making state disabled in the beginning makes the placeholder text disappear
-		self.gradient_value.grid(row=0, column=1, sticky="nswe",padx=(5,0))
+		self.gradient_value.grid(row=0, column=1, sticky="nswe",padx=(0,0))
 
 
 		self.multiple_pallets_button = ctk.CTkCheckBox(self, text="Alternate Color Themes",onvalue="On",border_color="White",offvalue="Off",text_color="White",command=self.button_clicked,variable=self.checkbox_var)
@@ -147,11 +151,27 @@ class ColourFrameSettings(ctk.CTkFrame):
 		if button == "gradient_button":
 			if value == True:
 				self.gradient_value.configure(fg_color="Gray22",border_color="Gray22",state="normal")
-			else: self.gradient_value.configure(fg_color="Gray20",border_color="Gray20",state="disabled")
 				
-	def gradient_length(self):
-		value = self.gradient_value.get()
-		return value
+				self.send_len = True
+				self.repeat_send_len_event()
+			else: 
+				self.gradient_value.configure(fg_color="Gray20",border_color="Gray20",state="disabled")
+				self.send_len = False
+			
+				
+	def send_len_event(self):
+		value = self.gradient_value.get("0.0","end")
+		try:
+			value = int(value)
+			self.colour_frame_pallet.set_settings("gradient_len",value)
+		except ValueError:""
+
+
+	def repeat_send_len_event(self):
+		self.send_len_event()
+		# Schedule the repeat_send_len_event to be called again after 1000 milliseconds
+		if self.send_len == False: return
+		self.after(1000, self.repeat_send_len_event)
 
 
 
@@ -215,14 +235,14 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.button_id = None
 		self.last_fg_color = None
 		self.current_frame = None
-
+		self.old_len = 10
 
 		self.gradient_button = False
 		
 
 
 
-		self.gradient_lenght = 10
+		self.gradient_len = 10
 		self.label_colour_pallet = ctk.CTkLabel(self, corner_radius=0, text=f'{"Color Pallet"} {self.current_frame}',font=("_",20,"bold"),fg_color="transparent",width=10)
 		self.label_colour_pallet.grid(row=0, column=0, columnspan=3, sticky="nswe", padx=20, pady=(10,0))
 
@@ -282,10 +302,14 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.bind("<Configure>", self.hide_scrollbar)
 
 	def set_settings(self,button,value):
-
 		setattr(self, f"{button}", value)
-		print(self.gradient_button)
+		if button == "gradient_len": self.observe_gradient_len()
 
+	def observe_gradient_len(self):
+		new_len = self.gradient_len
+		if new_len != self.old_len:
+			self.update()
+		self.old_len = new_len
 		
 	def printarray(self):
 		colors = self.current_colour_array()
@@ -312,28 +336,29 @@ class ColourFramePallet(ctk.CTkFrame):
 		for button in colors:
 			color = button.cget("fg_color")
 			temp_array.append(color)
-		#print(temp_array)
-		color_gen = ColorGenerator()		
+		color_gen = ColorGenerator()	
+
+		if self.gradient_button == True:
+
+			lenght = self.gradient_len if self.gradient_len > 5 else 5 # Checks length cause 1 makes Error
+
+			temp_array = ColorGenerator.generate_gradient_colors(self,temp_array,lenght)
+
 		image = color_gen.create_color_image(temp_array)
 		self.update_preview_image(image)
 
 	def save_pallet(self,place,name):
 
-	
-		
-
 		colors = self.current_colour_array()
-		print("Saving                 ")
+
 		temp_array = []
 		for item in colors:
 			color = item.cget("fg_color")
 			temp_array.append(color)
 
 		if self.gradient_button == True:
-			lenght = self.gradient_length
-			print(lenght())
-			print("Its True")
-			temp_array = ColorGenerator.generate_gradient_colors(self,temp_array,self.gradient_lenght)
+			lenght = self.gradient_len
+			temp_array = ColorGenerator.generate_gradient_colors(self,temp_array,lenght)
 
 
 		ColorGenerator.save_colors_to_file(self,temp_array,name,place)
@@ -658,7 +683,7 @@ class CreateFinalPallet(ctk.CTkToplevel):
 
 	def done_event(self):
 		name = self.name_entry.get()
-		print("yy",self.directory)
+		print("Direc",self.directory)
 		self.create_pallet_event(name,self.directory)
 		print(self.name_entry.get())
 		

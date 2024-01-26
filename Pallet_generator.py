@@ -21,7 +21,9 @@ class ColorGenerator:
         num_refs = len(reference_colors)
         colors = []
         print(reference_colors)
-        for i in range(num_colors):
+        print(num_colors)
+        #num_colors = 55
+        for i in range(num_colors):            
             hue = i / float(num_colors-1)
             ref_index = int(hue * (num_refs - 1))
             remainder = hue * (num_refs - 1) - ref_index
