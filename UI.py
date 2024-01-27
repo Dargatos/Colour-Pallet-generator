@@ -138,7 +138,7 @@ class ColourFrameSettings(ctk.CTkFrame):
 		self.gradient_value.grid(row=0, column=1, sticky="nswe",padx=(0,0))
 
 
-		self.multiple_pallets_button = ctk.CTkCheckBox(self, text="Alternate Color Themes",onvalue="On",border_color="White",offvalue="Off",text_color="White",command=self.button_clicked,variable=self.checkbox_var)
+		self.multiple_pallets_button = ctk.CTkCheckBox(self, text="Shuffel pallets",onvalue="On",border_color="White",offvalue="Off",text_color="White",command=self.button_clicked,variable=self.checkbox_var)
 		self.multiple_pallets_button.grid(row=2, column=0, sticky="nswe", padx=15, pady=4)
 
 	def button_clicked(self):
@@ -238,7 +238,7 @@ class ColourFramePallet(ctk.CTkFrame):
 		self.old_len = 10
 
 		self.gradient_button = False
-		
+		self.shuffel = False
 
 
 
@@ -326,9 +326,11 @@ class ColourFramePallet(ctk.CTkFrame):
 		if value == "On":
 			self.next_pallet_button.grid(row=0,column=2,sticky="",pady=(10,0),padx=(10,0))
 			self.previous_pallet_button.grid(row=0,column=0,sticky="",pady=(10,0),padx=(0,10))
+			self.shuffel = True
 		else:
 			self.next_pallet_button.grid_forget()
 			self.previous_pallet_button.grid_forget()
+			self.shuffel = False
 			
 	def update(self):
 		colors = self.current_colour_array()
@@ -338,11 +340,41 @@ class ColourFramePallet(ctk.CTkFrame):
 			temp_array.append(color)
 		color_gen = ColorGenerator()	
 
-		if self.gradient_button == True:
+		if self.shuffel:
+			print("Shuuffffel")
+			colour_parent_ar = []
+
+			for sub_array in self.colour_parent_array: # WTF IM doint that rn soo ugly make functions for that shit like wtf, Espacially importn an fnt for the converting into an hex ar
+				if sub_array == []: continue # Runs into erro if ya delete all colour in pallet so just continue if there arent any lol
+				print(f"parent len{len(self.colour_parent_array)}")
+				print(self.colour_parent_array)
+				colour_ar = []
+				for i, element  in enumerate(sub_array):
+					print(element)
+					colour = element.cget("fg_color")
+					colour_ar.append(colour)
+
+
+				if self.gradient_button:
+						lenght = self.gradient_len if self.gradient_len > 5 else 5
+						colour_ar = ColorGenerator.generate_gradient_colors(self,colour_ar,lenght)
+
+
+			
+
+
+				colour_parent_ar.append(colour_ar)
+
+			temp_array = ColorGenerator.shuffel(self,colour_parent_ar)
+
+
+		elif self.gradient_button == True:
 
 			lenght = self.gradient_len if self.gradient_len > 5 else 5 # Checks length cause 1 makes Error
 
 			temp_array = ColorGenerator.generate_gradient_colors(self,temp_array,lenght)
+
+		
 
 		image = color_gen.create_color_image(temp_array)
 		self.update_preview_image(image)
@@ -356,11 +388,14 @@ class ColourFramePallet(ctk.CTkFrame):
 			color = item.cget("fg_color")
 			temp_array.append(color)
 
+		if self.shuffel:
+			temp_array = ColorGenerator.shuffel(self,self.colour_parent_array)
+
 		if self.gradient_button == True:
 			lenght = self.gradient_len
 			temp_array = ColorGenerator.generate_gradient_colors(self,temp_array,lenght)
 
-
+		
 		ColorGenerator.save_colors_to_file(self,temp_array,name,place)
 
 
@@ -422,6 +457,9 @@ class ColourFramePallet(ctk.CTkFrame):
 			self.latest_new_frame.destroy()
 			array = self.colour_pallets_frames[:-1]
 			self.colour_pallets_frames = array
+
+			parent_ar = self.colour_parent_array[:-1]
+			self.colour_parent_array = parent_ar
 
 		self.update()
 		
@@ -685,7 +723,7 @@ class CreateFinalPallet(ctk.CTkToplevel):
 		name = self.name_entry.get()
 		print("Direc",self.directory)
 		self.create_pallet_event(name,self.directory)
-		print(self.name_entry.get())
+		self.destroy()
 		
 
 

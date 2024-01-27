@@ -2,6 +2,7 @@ import colorsys
 from datetime import datetime
 from PIL import Image
 from itertools import chain
+import itertools
 
 # Here are a lot of functions unused im planing on using them later tho not so far to use them atm
 
@@ -123,7 +124,20 @@ class ColorGenerator:
 
         self.all_colors = alternated_colors
         return alternated_colors
+    
+    def shuffel(self,parent_array):
 
+        max_length = max(len(arr) for arr in parent_array)
+
+        flattened_list = list(itertools.chain(*parent_array))
+
+        shuffeld_colors = []
+
+        for i in range(max_length):
+            shuffeld_colors.extend(flattened_list[i::max_length])
+
+        return shuffeld_colors
+    
     def display_image(self):
         color_image = self.create_color_image(self.all_colors, image_width=100)
         self.save_colors_to_file(self.all_colors, prefix='Co')
