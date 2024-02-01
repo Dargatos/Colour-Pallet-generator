@@ -7,12 +7,14 @@ from CTkColorPicker import *
 from PIL import Image, ImageTk
 from Pallet_generator import *
 from ctk_color_picker import *
-
+import sys
+import winreg
 # Yeah thas the code for UI not Pretty and way to less comments to understand that mess by questions if have dicord or via issues on github lol
 
 
 
 class NavigatioFrame(ctk.CTkFrame):
+	
 	def __init__(
 			self, 
 			master, 
@@ -23,14 +25,16 @@ class NavigatioFrame(ctk.CTkFrame):
 			settings_image,
 			home_image, 
 			debug_command,
+			appearance_main,
 			command=None,
 			**kwargs
 			):
 		super().__init__(master, **kwargs)
 		self.grid_rowconfigure(5, weight=1)
 		
-
+		print("innit")
 		
+		self.appearance_main = appearance_main
 		self.debug_command = debug_command
 		self.home_button_event = home_button_event
 		self.colours_button_event = colours_button_event
@@ -39,6 +43,11 @@ class NavigatioFrame(ctk.CTkFrame):
 		self.settings_image = settings_image
 		self.home_image = home_image
 
+		self.fg_color = "Gray20"
+		self.text_color_light = "White"
+		self.text_color_dark = "Black"
+		self.hover_color_dark = "Gray20"
+		self.hover_color_light = "Gray70"
 
 		self.navigation_frame_logo_label = ctk.CTkLabel(self,text=" Colour Generator", compound="left",font=ctk.CTkFont(size=15, weight="bold"))
 		self.navigation_frame_logo_label.grid(row=0, column=0, padx=20, pady=20)   
@@ -98,18 +107,65 @@ class NavigatioFrame(ctk.CTkFrame):
 			command=self.debug_command
 			)
 		self.extra_button.grid(row = 4, column = 0, sticky = "nsew")
-        
+
+		self.last_button_name = None
 		self.last_button = None
 
+		#self.theme_button = ctk.CTkOptionMenu(self,corner_radius=5,values=["Light","Dark","System"],command=self.change_appearance_mode_event)
+		#self.theme_button.grid(row=6,column=0,padx=20,pady=10)
+
+	def change_appearance_mode_event(self,new_appearance_mode: str):
+		customtkinter.set_appearance_mode(new_appearance_mode)
+		
+		mode = str
+
+		if new_appearance_mode == "System":
+			result = self.is_windows_light_mode()
+			mode = "Light" if result else "Dark"
+		else: mode = new_appearance_mode
+
+		if mode == "Light":
+			self.extra_button.configure(text_color=self.text_color_dark,hover_color="Gray70")
+			self.settings_button.configure(text_color=self.text_color_dark,hover_color="Gray70")
+			self.colours_button.configure(text_color=self.text_color_dark,hover_color="Gray70")
+			self.home_button.configure(text_color=self.text_color_dark,hover_color="Gray70")
+			self.fg_color = "Gray70"
+		if mode == "Dark":
+			self.extra_button.configure(text_color="White",hover_color=self.hover_color_dark)
+			self.settings_button.configure(text_color="White",hover_color=self.hover_color_dark)
+			self.colours_button.configure(text_color="White",hover_color=self.hover_color_dark)
+			self.home_button.configure(text_color="White",hover_color=self.hover_color_dark)
+			self.fg_color = "Gray20"
+
+		self.appearance_main(new_appearance_mode)
+		self.highlite_buttons(self.last_button_name,"Gray20")
+		
+		
+		
 	def highlite_buttons(self, button_name, fg_color):
 		
-		
-		if self.last_button: self.last_button.configure(fg_color="transparent")
+		fg_color = self.fg_color
+		if self.last_button: 
+			print("Wtf")
+			self.last_button.configure(fg_color="transparent")
 		
 		button = getattr(self, f"{button_name}", None)
-		if button: button.configure(fg_color=fg_color)
+		print(button)
+
+		if button: 
+			print("Yes")
+			button.configure(fg_color=fg_color)
+		self.last_button_name = button_name
 		self.last_button = button
-		
+	
+	def is_windows_light_mode(self):
+		try:
+			key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+			value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+			return value == 1
+		except Exception as e:
+			print(f"Error: {e}")
+			return None
 	
 class ColourFrameSettings(ctk.CTkFrame):
 	def __init__(self,master,colour_frame_pallet, **kwargs):
@@ -117,6 +173,7 @@ class ColourFrameSettings(ctk.CTkFrame):
 		
 		self.colour_frame_pallet = colour_frame_pallet
 		self.send_len = False
+		self.appearance = "Dark"
 
 		self.gradient_var = tk.BooleanVar(value=False)
 		self.checkbox_var = tk.StringVar()
@@ -136,7 +193,7 @@ class ColourFrameSettings(ctk.CTkFrame):
 		self.gradient_value.insert("0.0",10)
 		self.gradient_value.configure(state="disabled") # making state disabled in the beginning makes the placeholder text disappear
 		self.gradient_value.grid(row=0, column=1, sticky="nswe",padx=(0,0))
-
+		
 
 		self.multiple_pallets_button = ctk.CTkCheckBox(self, text="Shuffel pallets",onvalue="On",border_color="White",offvalue="Off",text_color="White",command=self.button_clicked,variable=self.checkbox_var)
 		self.multiple_pallets_button.grid(row=2, column=0, sticky="nswe", padx=15, pady=4)
@@ -173,7 +230,12 @@ class ColourFrameSettings(ctk.CTkFrame):
 		if self.send_len == False: return
 		self.after(1000, self.repeat_send_len_event)
 
-
+	def get_appearance(self,value):
+		self.appearance = value
+		
+	def update_appearance(self):
+		if self.appearance == "Light":
+			self.gradient_button.configure(text_color="Black")
 
 class HomeFrame(ctk.CTkFrame):
 	def __init__(self,master,quit_event, **kwargs):
@@ -743,7 +805,7 @@ class App(ctk.CTk):
 		self.grid_rowconfigure((0), weight=1)
 		self.grid_rowconfigure((1), weight=0)
 
-		
+		self.appearance = "Dark"
 		self.folder_path = self.search_folder()
 
 		# load files(images and modes and configs)
@@ -768,6 +830,7 @@ class App(ctk.CTk):
 			settings_button_event = self.settings_button_event, 
 			colours_button_event = self.colours_button_event,
 			debug_command = self.debug_command,
+			appearance_main = self.appearance_main
 
 			)
 		
@@ -821,6 +884,14 @@ class App(ctk.CTk):
 	def colours_button_event(self):
 		self.select_frame_by_name("colour")
 
+	def appearance_main(self,new = None):
+		if new:
+			print("appearance")
+			self.appearance = new
+			ColourFrameSettings.get_appearance(new)
+
+	def ask_appearance(self):
+		return self.appearance
 
 	def create_pallet_event(self,name,location):
 		#location = self.search_folder()if self.search_folder() else location
