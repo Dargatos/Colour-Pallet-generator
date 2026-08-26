@@ -21,6 +21,7 @@ let selectedIndex = null;     // selected swatch index in current palette
 let gradientEnabled = false;
 let gradientLen = 10;
 let shuffleEnabled = false;
+let loopEnabled = false;
 
 const settings = {
   autosave: true,
@@ -88,6 +89,7 @@ function persistState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       palettes, currentPalette,
       gradientEnabled, gradientLen, shuffleEnabled,
+      loopEnabled,
       settings,
     }));
   } catch (e) { /* storage full / blocked — ignore */ }
@@ -99,6 +101,7 @@ function applyRestored(s) {
   gradientEnabled = !!s.gradientEnabled;
   gradientLen = clamp(parseInt(s.gradientLen) || 10, 5, 4096);
   shuffleEnabled = !!s.shuffleEnabled;
+  loopEnabled = !!s.loopEnabled;
   Object.assign(settings, s.settings || {});
   settings.autosave = (s.settings && typeof s.settings.autosave === "boolean")
     ? s.settings.autosave : true;
@@ -176,6 +179,7 @@ function shufflePalettes(parentArray) {
 // Compute the effective output colour list given current settings
 // (mirrors ColourFramePallet.update / save_pallet logic).
 function computeOutputColors() {
+  let output;
   if (shuffleEnabled) {
     const perPalette = palettes.map((pal) => {
       let arr = pal.slice();
@@ -185,14 +189,16 @@ function computeOutputColors() {
       }
       return arr;
     });
-    return shufflePalettes(perPalette);
+    output = shufflePalettes(perPalette);
+  } else {
+    output = palettes[currentPalette].slice();
+    if (gradientEnabled && output.length >= 2) {
+      const len = gradientLen > 5 ? gradientLen : 5;
+      output = generateGradientColors(output, len);
+    }
   }
-  let arr = palettes[currentPalette].slice();
-  if (gradientEnabled && arr.length >= 2) {
-    const len = gradientLen > 5 ? gradientLen : 5;
-    arr = generateGradientColors(arr, len);
-  }
-  return arr;
+  if (loopEnabled && output.length > 1) output.push(...output.slice().reverse());
+  return output;
 }
 
 /* ---------------- preview rendering ---------------- */
@@ -882,36 +888,9 @@ function onImportImage() {
 
 /* ---------------- saving ---------------- */
 
-let sspDirHandle = null;
-
-$("pick-ssp-dir").addEventListener("click", async () => {
-  if (!window.showDirectoryPicker) {
-    showToast("Folder access not supported in this browser — use downloads instead.");
-    return;
-  }
-  try {
-    sspDirHandle = await window.showDirectoryPicker({ id: "ssp-colorsets" });
-    $("ssp-dir-status").textContent = `→ ${sspDirHandle.name}`;
-    $("modal-dest").textContent = `${sspDirHandle.name}/ (SoundSpacePlus colorsets)`;
-    showToast(`Saving into "${sspDirHandle.name}" until page reloads.`);
-  } catch (err) {
-    /* user cancelled */
-  }
-});
-
 async function saveColorset(colors, name) {
   const sep = settings.lineend === "lf" ? "\n" : "\r\n";
   const text = colors.map(formatHex).join(sep) + sep;
-
-  if (sspDirHandle) {
-    const fileName = `${name}.txt`;
-    const fh = await sspDirHandle.getFileHandle(fileName, { create: true });
-    const w = await fh.createWritable();
-    await w.write(text);
-    await w.close();
-    showToast(`Saved ${fileName} → ${sspDirHandle.name} (${colors.length} colours)`);
-    return;
-  }
 
   const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
@@ -954,7 +933,7 @@ function exportJSON() {
     app: "colour-pallet-generator",
     version: 1,
     palettes, currentPalette,
-    gradientEnabled, gradientLen, shuffleEnabled,
+    gradientEnabled, gradientLen, shuffleEnabled, loopEnabled,
   };
   downloadBlob(
     new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
@@ -979,8 +958,11 @@ function importJSONFile(file) {
       gradientEnabled = !!data.gradientEnabled;
       gradientLen = clamp(parseInt(data.gradientLen) || 10, 5, 4096);
       shuffleEnabled = !!data.shuffleEnabled;
+      loopEnabled = !!data.loopEnabled;
       $("opt-gradient").checked = gradientEnabled;
       $("opt-shuffle").checked = shuffleEnabled;
+      $("opt-loop").checked = loopEnabled;
+      $("set-loop").checked = loopEnabled;
       $("grad-len-row").classList.toggle("disabled", !gradientEnabled);
       selectedIndex = null;
       refresh();
@@ -1088,6 +1070,9 @@ function wire() {
     gradientEnabled = false;
     $("opt-gradient").checked = false;
     $("opt-shuffle").checked = false;
+    loopEnabled = false;
+    $("opt-loop").checked = false;
+    $("set-loop").checked = false;
     $("grad-len-row").classList.add("disabled");
     refresh();
     showToast("Reset.");
@@ -1121,6 +1106,11 @@ function wire() {
     shuffleEnabled = e.target.checked;
     refresh();
   });
+  $("opt-loop").addEventListener("change", (e) => {
+    loopEnabled = e.target.checked;
+    $("set-loop").checked = loopEnabled;
+    refresh();
+  });
   $("import-img-btn").addEventListener("click", onImportImage);
 
   // settings page
@@ -1132,6 +1122,11 @@ function wire() {
   });
   ["set-preview-size", "set-contrast", "set-accent", "set-lineend", "set-hexcase", "set-hash"].forEach((id) => {
     $(id).addEventListener("change", applySettingsChange);
+  });
+  $("set-loop").addEventListener("change", (e) => {
+    loopEnabled = e.target.checked;
+    $("opt-loop").checked = loopEnabled;
+    refresh();
   });
   $("export-json").addEventListener("click", exportJSON);
   $("import-json").addEventListener("click", () => $("json-file").click());
@@ -1150,6 +1145,9 @@ function wire() {
     gradientLen = 10;
     $("opt-gradient").checked = false;
     $("opt-shuffle").checked = false;
+    loopEnabled = false;
+    $("opt-loop").checked = false;
+    $("set-loop").checked = false;
     $("grad-len-row").classList.add("disabled");
     refresh();
     showToast("Saved data deleted.");
@@ -1233,6 +1231,8 @@ const restored = decodeShareURL() || loadPersisted();
 applyAppearance(localStorage.getItem("cg-appearance") || "system");
 $("opt-gradient").checked = gradientEnabled;
 $("opt-shuffle").checked = shuffleEnabled;
+$("opt-loop").checked = loopEnabled;
+$("set-loop").checked = loopEnabled;
 $("grad-len-row").classList.toggle("disabled", !gradientEnabled);
 $("grad-len").value = gradientLen;
 syncSettingsUI();

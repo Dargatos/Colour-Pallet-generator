@@ -39,15 +39,6 @@
       <li><b>Tip:</b> drag swatches to reorder — the others glow in the dragged colour · everything is saved in your browser automatically.</li>
     </ul>
 
-    <!-- SoundSpacePlus colorsets folder picker -->
-    <div class="ssp-export card">
-      <b>Export directly into SoundSpacePlus colorsets folder</b>
-      <p>Uses the File System Access API (Chromium browsers). The app remembers your
-         chosen directory for this session only.</p>
-      <button id="pick-ssp-dir" class="btn btn-outline">📁 Pick SoundSpacePlus colorsets folder…</button>
-      <span id="ssp-dir-status" class="muted">not selected</span>
-    </div>
-
     <div class="home-actions">
       <button id="clear-all" class="btn btn-danger">Reset everything</button>
     </div>
@@ -95,6 +86,7 @@
         <input type="number" id="grad-len" value="10" min="5" max="4096">
       </div>
       <label class="check-row"><input type="checkbox" id="opt-shuffle"> Shuffle palettes</label>
+      <label class="check-row"><input type="checkbox" id="opt-loop"> Loop colourset (mirror colours back to the start)</label>
 
       <hr class="sep">
 
@@ -164,6 +156,7 @@
         </select>
       </div>
       <label class="check-row"><input type="checkbox" id="set-hash" checked> Include “#” prefix</label>
+      <label class="check-row"><input type="checkbox" id="set-loop"> Loop colourset (mirror colours back to the start)</label>
     </div>
 
     <div class="card">
