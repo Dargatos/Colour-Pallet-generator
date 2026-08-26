@@ -20,6 +20,7 @@ let currentPalette = 0;
 let selectedIndex = null;     // selected swatch index in current palette
 let gradientEnabled = false;
 let gradientLen = 10;
+let gradientStyle = "balanced";
 let shuffleEnabled = false;
 let loopEnabled = false;
 
@@ -88,7 +89,7 @@ function persistState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       palettes, currentPalette,
-      gradientEnabled, gradientLen, shuffleEnabled,
+      gradientEnabled, gradientLen, gradientStyle, shuffleEnabled,
       loopEnabled,
       settings,
     }));
@@ -100,6 +101,8 @@ function applyRestored(s) {
   currentPalette = clamp(s.currentPalette || 0, 0, palettes.length - 1);
   gradientEnabled = !!s.gradientEnabled;
   gradientLen = clamp(parseInt(s.gradientLen) || 10, 5, 4096);
+  gradientStyle = ["balanced", "bright", "dark", "vivid"].includes(s.gradientStyle)
+    ? s.gradientStyle : "balanced";
   shuffleEnabled = !!s.shuffleEnabled;
   loopEnabled = !!s.loopEnabled;
   Object.assign(settings, s.settings || {});
@@ -120,7 +123,7 @@ function loadPersisted() {
 function encodeShareURL() {
   const data = {
     p: palettes, c: currentPalette,
-    g: gradientEnabled ? 1 : 0, l: gradientLen,
+    g: gradientEnabled ? 1 : 0, l: gradientLen, gs: gradientStyle,
     s: shuffleEnabled ? 1 : 0, loop: loopEnabled ? 1 : 0,
   };
   const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
@@ -132,6 +135,8 @@ function decodeShareURL() {
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(3)))));
     applyRestored(data);
+    gradientStyle = ["balanced", "bright", "dark", "vivid"].includes(data.gs)
+      ? data.gs : "balanced";
     loopEnabled = !!data.loop;
     settings.autosave = true; // sharing shouldn't inherit weird autosave flags
     return "share";
@@ -157,7 +162,19 @@ function generateGradientColors(referenceColors, numColors) {
     } else {
       rgb = c1;
     }
-    colors.push("#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase());
+    let color = "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+    const transitionAmount = Math.sin(Math.PI * remainder);
+    if (gradientStyle !== "balanced" && transitionAmount > 0) {
+      const hsv = hexToHsv(color);
+      if (gradientStyle === "bright") hsv.v = clamp(hsv.v + 0.16 * transitionAmount, 0, 1);
+      if (gradientStyle === "dark") hsv.v = clamp(hsv.v - hsv.v * 0.22 * transitionAmount, 0, 1);
+      if (gradientStyle === "vivid") {
+        hsv.s = clamp(hsv.s + 0.22 * transitionAmount, 0, 1);
+        hsv.v = clamp(hsv.v + 0.04 * transitionAmount, 0, 1);
+      }
+      color = hsvToHex(hsv.h, hsv.s, hsv.v);
+    }
+    colors.push(color);
   }
   return colors;
 }
@@ -818,7 +835,7 @@ function exportJSON() {
     app: "colour-pallet-generator",
     version: 1,
     palettes, currentPalette,
-    gradientEnabled, gradientLen, shuffleEnabled, loopEnabled,
+    gradientEnabled, gradientLen, gradientStyle, shuffleEnabled, loopEnabled,
   };
   downloadBlob(
     new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
@@ -842,13 +859,18 @@ function importJSONFile(file) {
       currentPalette = clamp(parseInt(data.currentPalette) || 0, 0, palettes.length - 1);
       gradientEnabled = !!data.gradientEnabled;
       gradientLen = clamp(parseInt(data.gradientLen) || 10, 5, 4096);
+      gradientStyle = ["balanced", "bright", "dark", "vivid"].includes(data.gradientStyle)
+        ? data.gradientStyle : "balanced";
       shuffleEnabled = !!data.shuffleEnabled;
       loopEnabled = !!data.loopEnabled;
       $("opt-gradient").checked = gradientEnabled;
       $("opt-shuffle").checked = shuffleEnabled;
       $("opt-loop").checked = loopEnabled;
       $("set-loop").checked = loopEnabled;
+      $("gradient-style").value = gradientStyle;
+      $("set-gradient-style").value = gradientStyle;
       $("grad-len-row").classList.toggle("disabled", !gradientEnabled);
+      $("grad-style-row").classList.toggle("disabled", !gradientEnabled);
       selectedIndex = null;
       refresh();
       showToast(`⬆️ Imported ${palettes.length} palettes from JSON.`);
@@ -955,6 +977,9 @@ function wire() {
     gradientEnabled = false;
     $("opt-gradient").checked = false;
     $("opt-shuffle").checked = false;
+    gradientStyle = "balanced";
+    $("gradient-style").value = gradientStyle;
+    $("set-gradient-style").value = gradientStyle;
     loopEnabled = false;
     $("opt-loop").checked = false;
     $("set-loop").checked = false;
@@ -981,10 +1006,16 @@ function wire() {
   $("opt-gradient").addEventListener("change", (e) => {
     gradientEnabled = e.target.checked;
     $("grad-len-row").classList.toggle("disabled", !gradientEnabled);
+    $("grad-style-row").classList.toggle("disabled", !gradientEnabled);
     refresh();
   });
   $("grad-len").addEventListener("input", (e) => {
     gradientLen = clamp(parseInt(e.target.value) || 10, 5, 4096);
+    refresh();
+  });
+  $("gradient-style").addEventListener("change", (e) => {
+    gradientStyle = e.target.value;
+    $("set-gradient-style").value = gradientStyle;
     refresh();
   });
   $("opt-shuffle").addEventListener("change", (e) => {
@@ -1011,6 +1042,11 @@ function wire() {
     $("opt-loop").checked = loopEnabled;
     refresh();
   });
+  $("set-gradient-style").addEventListener("change", (e) => {
+    gradientStyle = e.target.value;
+    $("gradient-style").value = gradientStyle;
+    refresh();
+  });
   $("export-json").addEventListener("click", exportJSON);
   $("import-json").addEventListener("click", () => $("json-file").click());
   $("json-file").addEventListener("change", (e) => {
@@ -1026,8 +1062,11 @@ function wire() {
     gradientEnabled = false;
     shuffleEnabled = false;
     gradientLen = 10;
+    gradientStyle = "balanced";
     $("opt-gradient").checked = false;
     $("opt-shuffle").checked = false;
+    $("gradient-style").value = gradientStyle;
+    $("set-gradient-style").value = gradientStyle;
     loopEnabled = false;
     $("opt-loop").checked = false;
     $("set-loop").checked = false;
@@ -1088,6 +1127,7 @@ function wire() {
         gradientEnabled = !gradientEnabled;
         $("opt-gradient").checked = gradientEnabled;
         $("grad-len-row").classList.toggle("disabled", !gradientEnabled);
+        $("grad-style-row").classList.toggle("disabled", !gradientEnabled);
         refresh();
         showToast(`Gradient ${gradientEnabled ? "on" : "off"}`);
         break;
@@ -1117,6 +1157,9 @@ $("opt-shuffle").checked = shuffleEnabled;
 $("opt-loop").checked = loopEnabled;
 $("set-loop").checked = loopEnabled;
 $("grad-len-row").classList.toggle("disabled", !gradientEnabled);
+$("grad-style-row").classList.toggle("disabled", !gradientEnabled);
+$("gradient-style").value = gradientStyle;
+$("set-gradient-style").value = gradientStyle;
 $("grad-len").value = gradientLen;
 syncSettingsUI();
 refresh();

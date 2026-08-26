@@ -85,6 +85,15 @@
         <label for="grad-len">Steps:</label>
         <input type="number" id="grad-len" value="10" min="5" max="4096">
       </div>
+      <div class="grad-len-row disabled" id="grad-style-row">
+        <label for="gradient-style">Style:</label>
+        <select id="gradient-style">
+          <option value="balanced">Balanced</option>
+          <option value="bright">Bright</option>
+          <option value="dark">Dark</option>
+          <option value="vivid">Vivid</option>
+        </select>
+      </div>
       <label class="check-row"><input type="checkbox" id="opt-shuffle"> Shuffle palettes</label>
       <label class="check-row"><input type="checkbox" id="opt-loop"> Loop colourset (mirror colours back to the start)</label>
 
@@ -127,6 +136,15 @@
           <option value="toxic">Toxic Turquoise</option>
           <option value="pink">Neon Pink</option>
           <option value="violet">Ultraviolet</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="set-gradient-style">Gradient style:</label>
+        <select id="set-gradient-style">
+          <option value="balanced">Balanced</option>
+          <option value="bright">Bright</option>
+          <option value="dark">Dark</option>
+          <option value="vivid">Vivid</option>
         </select>
       </div>
     </div>
