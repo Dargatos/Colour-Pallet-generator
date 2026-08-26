@@ -226,15 +226,20 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
   flex: 1;
   height: 40px;
   border: none;
-  border-radius: 7px;
+  border-radius: 12px;
   cursor: pointer;
   font-weight: 700;
   font-size: 14px;
   color: #000;
   position: relative;
   z-index: 0; /* own stacking context so the glow layer stays behind us, above the panel */
+  outline: none; /* kill the browser's rectangular focus ring */
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease;
 }
+.swatch:focus,
+.swatch:focus-visible { outline: none; box-shadow: none; }
+.swatch::-moz-focus-inner { border: 0; }
 .swatch:hover { transform: translateY(-1px); }
 
 /* Neon glow layer: a THIN dedicated box hugging the swatch (user-specified).
@@ -244,7 +249,7 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
   content: "";
   position: absolute;
   inset: -2px;                 /* 2px thin halo around the label */
-  border-radius: 9px;          /* concentric with the swatch's 7px */
+  border-radius: 14px;         /* concentric with the swatch's 12px */
   background: transparent;
   box-shadow: 0 0 0 0 transparent;
   opacity: 0;
