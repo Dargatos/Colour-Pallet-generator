@@ -214,22 +214,6 @@ h2 { margin-top: 4px; }
 }
 .swatch-row { display: flex; align-items: center; gap: 8px; position: relative; }
 .swatch-row.dragging { opacity: 0.25; }
-.swatch-row.drop-above::before,
-.swatch-row.drop-below::after {
-  content: "";
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--drop-color, var(--accent));
-  box-shadow:
-    0 0 8px var(--drop-color, var(--accent-glow)),
-    0 0 20px var(--drop-color, var(--accent-glow));
-  z-index: 5;
-}
-.swatch-row.drop-above::before { top: -5px; }
-.swatch-row.drop-below::after { bottom: -5px; }
 .drag-ghost {
   position: fixed;
   opacity: 0.92;
