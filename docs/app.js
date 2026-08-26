@@ -339,12 +339,14 @@ function liveReorder(toIdx) {
 }
 
 function startSwatchDrag(idx, btn, ev) {
-  const hex = currentArray()[idx];
   const ghost = btn.cloneNode(true);
-  ghost.classList.add("drag-ghost");
+  // "selected" gives the ghost the same rounded ::before neon glow
+  // (--glow-color is cloned inline). Never use box-shadow here — its
+  // halo has square corners and paints over every row it crosses.
+  ghost.classList.add("drag-ghost", "selected");
   ghost.style.width = `${btn.offsetWidth}px`;
   ghost.style.height = `${btn.offsetHeight}px`;
-  ghost.style.boxShadow = `0 0 16px ${hex}, 0 0 34px ${hex}88, 0 6px 18px rgba(0,0,0,0.5)`;
+  ghost.style.transform = "scale(1.03)";
   document.body.appendChild(ghost);
   // grabbing a swatch selects it immediately → neon glow appears on grab
   selectedIndex = idx;

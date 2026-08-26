@@ -237,16 +237,16 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 }
 .swatch:hover { transform: translateY(-1px); }
 
-/* Neon glow layer: a blurred copy of the swatch BEHIND the label.
-   Because it inherits border-radius, the glow always keeps perfectly
-   rounded corners — no square box-shadow halo. */
+/* Neon glow layer: a THIN dedicated box hugging the swatch (user-specified).
+   Explicit border-radius (never inherit) + box-shadow → the shadow follows
+   this exact rounded outline. Cannot render square corners. */
 .swatch::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
+  inset: -2px;                 /* 2px thin halo around the label */
+  border-radius: 9px;          /* concentric with the swatch's 7px */
   background: transparent;
-  filter: blur(9px) saturate(1.5);
+  box-shadow: 0 0 0 0 transparent;
   opacity: 0;
   z-index: -1;
   pointer-events: none;
@@ -258,8 +258,9 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
   z-index: 1;
 }
 .swatch.selected::before {
-  background: var(--glow-color, transparent); /* set inline per swatch from JS */
-  opacity: 0.9;
+  background: var(--glow-color, transparent);   /* thin ring, 0.30 alpha look */
+  opacity: 0.3;
+  box-shadow: 0 0 14px 3px var(--glow-color, transparent);
 }
 /* during drag: other swatches glow in the DRAGGED colour, strength = similarity */
 .swatch.reacting {
@@ -267,7 +268,8 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 }
 .swatch.reacting::before {
   background: var(--react-color, transparent);
-  opacity: calc(var(--react-strength, 0) * 0.85);
+  opacity: calc(var(--react-strength, 0) * 0.25);
+  box-shadow: 0 0 calc(4px + var(--react-strength, 0) * 12px) 2px var(--react-color, transparent);
 }
 .palette-actions { display: flex; gap: 8px; padding: 0 14px 14px; }
 .btn {
