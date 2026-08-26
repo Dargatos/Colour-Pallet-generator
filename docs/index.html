@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colour Generator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="dark">
+<div class="app">
+  <!-- ============ NAVIGATION SIDEBAR ============ -->
+  <nav class="nav" id="nav">
+    <div class="nav-logo">🎨 Colour Generator</div>
+    <button class="nav-btn active" id="btn-home">🏠 Home</button>
+    <button class="nav-btn" id="btn-colours">🎨 Colours</button>
+    <button class="nav-btn" id="btn-settings">⚙️ Settings</button>
+    <div class="nav-spacer"></div>
+    <div class="nav-appearance">
+      <button class="appearance-btn" data-mode="light" title="Light mode">☀️</button>
+      <button class="appearance-btn" data-mode="dark" title="Dark mode">🌙</button>
+      <button class="appearance-btn" data-mode="system" title="System mode">🖥️</button</div>
+    </div>
+    <a class="nav-repo" href="https://github.com/Dargatos/Colour-Pallet-generator" target="_blank" rel="noopener">GitHub ↗</a>
+  </nav>
+
+  <!-- ============ HOME FRAME ============ -->
+  <main class="frame frame-home active" id="frame-home">
+    <h2>Welcome!</h2>
+    <p><b>Colours</b> (sidebar) is the main tool: build palettes by adding colours,
+       preview the resulting square image, and save your colourset.</p>
+    <ul>
+      <li><b>Add / Remove / Edit</b> — manage colours in each palette (click a colour to select it).</li>
+      <li><b>Gradient</b> — interpolate between your palette colours; set how many steps.</li>
+      <li><b>Shuffle palettes</b> — combine multiple palettes into one interleaved output.</li>
+      <li><b>Create</b> — name it and download a <code>.txt</code> colourset file (SoundSpacePlus format: one hex per line).</li>
+    </ul>
+
+    <!-- SoundSpacePlus colorsets folder picker -->
+    <div class="ssp-export card">
+      <b>Export directly into SoundSpacePlus colorsets folder</b>
+      <p>Uses the File System Access API (Chromium browsers). The app remembers your
+         chosen directory for this session only.</p>
+      <button id="pick-ssp-dir" class="btn btn-outline">📁 Pick SoundSpacePlus colorsets folder…</button>
+      <span id="ssp-dir-status" class="muted">not selected</span>
+    </div>
+
+    <div class="home-actions">
+      <button id="clear-all" class="btn btn-danger">Reset everything</button>
+    </div>
+    <p class="muted small">Web port of the desktop Colour Pallet generator. Files stay in your browser.</p>
+  </main>
+
+  <!-- ============ COLOURS FRAME (MAIN TOOL) ============ -->
+  <main class="frame frame-colours" id="frame-colours">
+    <!-- LEFT: Preview -->
+    <section class="panel panel-preview">
+      <div class="panel-head"><h3>Overview</h3></div>
+      <div class="preview-wrap"><canvas id="preview-canvas" width="512" height="512"></canvas></div>
+      <button id="create-btn" class="create-btn">Create</button>
+    </section>
+
+    <!-- CENTER: Palette editor -->
+    <section class="panel panel-palette">
+      <div class="panel-head palette-head">
+        <button id="prev-pallet" class="icon-btn hidden">◀</button>
+        <h3 id="palette-title">Colour Pallet 1</h3>
+        <button id="next-pallet" class="icon-btn hidden">▶</button>
+        <button id="add-palette" class="icon-btn plus hidden" title="Add another palette">+</button>
+      </div>
+      <div class="colour-list" id="colour-list"><!-- swatches injected --></div>
+      <div class="palette-actions">
+        <button id="add-colour" class="btn btn-soft">Add</button>
+        <button id="remove-colour" class="btn btn-soft">Remove</button>
+        <button id="edit-colour" class="btn btn-soft">Edit</button>
+      </div>
+      <input type="file" id="img-import" accept="image/*" hidden>
+    </section>
+
+    <!-- RIGHT: Settings -->
+    <section class="panel panel-side settings-panel">
+      <h3 class="settings-title">Colour Settings</h3>
+      <label class="check-row"><input type="checkbox" id="opt-gradient"> Gradient</label>
+      <div class="grad-len-row disabled" id="grad-len-row">
+        <label for="grad-len">Steps:</label>
+        <input type="number" id="grad-len" value="10" min="5" max="4096">
+      </div>
+      <label class="check-row"><input type="checkbox" id="opt-shuffle"> Shuffle palettes</label>
+
+      <hr class="sep">
+
+      <h4>Image import</h4>
+      <p class="muted small">Extract a palette from an image (median cut, k=16).</p>
+      <button id="import-img-btn" class="btn btn-soft full">🖼️ Import from image…</button>
+      <div class="kmeans-row">
+        <label for="k-value">k:</label>
+        <input type="number" id="k-value" value="16" min="2" max="256">
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ SETTINGS FRAME ============ -->
+  <main class="frame frame-settings" id="frame-settings">
+    <h2>Settings</h2>
+    <div class="card">
+      <b>Appearance</b>
+      <p class="muted">Use the ☀️ / 🌙 / 🖥️ buttons in the sidebar. System follows your OS preference automatically.</p>
+    </div>
+  </main>
+</div>
+
+<!-- ============ CREATE PALETTE MODAL ============ -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" role="dialog" aria-labelledby="modal-title">
+    <h3 id="modal-title">Create Colorset</h3>
+    <div class="modal-field">
+      <label>Name</label>
+      <input type="text" id="modal-name" placeholder="Name" maxlength="80">
+    </div>
+    <div class="modal-hint muted small">Destination:
+      <span id="modal-dest">browser download</span>
+    </div>
+    <div class="modal-actions">
+      <button id="modal-cancel" class="btn btn-soft">Cancel</button>
+      <button id="modal-save" class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-holder"></div>
+
+<!-- Hidden native colour input used as the picker dialog -->
+<input type="color" id="native-color-input" style="position:absolute; left:-100px; top:-100px; width:0; height:0;" tabindex="-1">
+
+<script src="app.js"></script>
+</body>
+</html>
