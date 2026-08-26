@@ -11,7 +11,7 @@
   <!-- ============ NAVIGATION SIDEBAR ============ -->
   <nav class="nav" id="nav">
     <div class="nav-logo">🎨 Colour Generator</div>
-    <button class="nav-btn active" id="btn-home">🏠 Home</button>
+    <button class="nav-btn active" id="btn-home">🏠 Help / Info</button>
     <button class="nav-btn" id="btn-colours">🎨 Colours</button>
     <button class="nav-btn" id="btn-settings">⚙️ Settings</button>
     <div class="nav-spacer"></div>
@@ -25,7 +25,7 @@
 
   <!-- ============ HOME FRAME ============ -->
   <main class="frame frame-home active" id="frame-home">
-    <h2>Welcome!</h2>
+    <h2>Help / Info</h2>
     <p><b>Colours</b> (sidebar) is the main tool: build palettes by adding colours,
        preview the resulting square image, and save your colourset.</p>
     <ul>
@@ -33,6 +33,10 @@
       <li><b>Gradient</b> — interpolate between your palette colours; set how many steps.</li>
       <li><b>Shuffle palettes</b> — combine multiple palettes into one interleaved output.</li>
       <li><b>Create</b> — name it and download a <code>.txt</code> colourset file (SoundSpacePlus format: one hex per line).</li>
+    </ul>
+    <ul>
+      <li><b>Keyboard:</b> press <code>?</code> for the hotkey cheat sheet · ← / → switch palettes · Alt+↑/↓ move colour · A add · D delete · R random · G gradient · M shuffle · S save</li>
+      <li><b>Tip:</b> drag swatches to reorder — the others glow in the dragged colour · everything is saved in your browser automatically.</li>
     </ul>
 
     <!-- SoundSpacePlus colorsets folder picker -->
@@ -64,14 +68,20 @@
       <div class="panel-head palette-head">
         <button id="prev-pallet" class="icon-btn hidden">◀</button>
         <h3 id="palette-title">Colour Pallet 1</h3>
-        <button id="next-pallet" class="icon-btn hidden">▶</button>
-        <button id="add-palette" class="icon-btn plus hidden" title="Add another palette">+</button>
+        <div class="head-right">
+          <button id="next-pallet" class="icon-btn hidden" title="Next palette">▶</button>
+          <button id="add-palette" class="icon-btn hidden" title="Add another palette">+</button>
+        </div>
       </div>
       <div class="colour-list" id="colour-list"><!-- swatches injected --></div>
       <div class="palette-actions">
         <button id="add-colour" class="btn btn-soft">Add</button>
         <button id="remove-colour" class="btn btn-soft">Remove</button>
         <button id="edit-colour" class="btn btn-soft">Edit</button>
+        <button id="random-btn" class="icon-btn wide" title="Random palette (harmony-aware)">🎲</button>
+        <button id="copy-btn" class="icon-btn wide" title="Copy hex codes to clipboard">📋</button>
+        <button id="png-btn" class="icon-btn wide" title="Download preview as PNG">🖼️</button>
+        <button id="share-btn" class="icon-btn wide" title="Copy shareable link">🔗</button>
       </div>
       <input type="file" id="img-import" accept="image/*" hidden>
     </section>
@@ -101,9 +111,72 @@
   <!-- ============ SETTINGS FRAME ============ -->
   <main class="frame frame-settings" id="frame-settings">
     <h2>Settings</h2>
+
     <div class="card">
       <b>Appearance</b>
       <p class="muted">Use the ☀️ / 🌙 / 🖥️ buttons in the sidebar. System follows your OS preference automatically.</p>
+    </div>
+
+    <div class="card">
+      <b>General</b>
+      <label class="check-row"><input type="checkbox" id="set-autosave" checked> Remember palettes &amp; settings in this browser (localStorage)</label>
+      <div class="setting-row">
+        <label for="set-preview-size">Preview resolution:</label>
+        <select id="set-preview-size">
+          <option value="256">256 × 256</option>
+          <option value="512" selected>512 × 512</option>
+          <option value="1024">1024 × 1024</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="set-contrast">Swatch text:</label>
+        <select id="set-contrast">
+          <option value="auto">Auto (readable)</option>
+          <option value="black">Always black</option>
+          <option value="white">Always white</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="set-accent">Accent colour:</label>
+        <select id="set-accent">
+          <option value="blue">Neon Blue</option>
+          <option value="toxic">Toxic Turquoise</option>
+          <option value="pink">Neon Pink</option>
+          <option value="violet">Ultraviolet</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>Export format (.txt coloursets)</b>
+      <div class="setting-row">
+        <label for="set-lineend">Line endings:</label>
+        <select id="set-lineend">
+          <option value="crlf" selected>CRLF (\r\n) — Windows / SoundSpacePlus</option>
+          <option value="lf">LF (\n) — Unix</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="set-hexcase">Hex case:</label>
+        <select id="set-hexcase">
+          <option value="upper" selected>UPPERCASE (#FF6347)</option>
+          <option value="lower">lowercase (#ff6347)</option>
+        </select>
+      </div>
+      <label class="check-row"><input type="checkbox" id="set-hash" checked> Include “#” prefix</label>
+    </div>
+
+    <div class="card">
+      <b>Data</b>
+      <p class="muted">Back up or move your palettes between browsers/devices as JSON.</p>
+      <div class="setting-row">
+        <button id="export-json" class="btn btn-soft">⬇️ Export palettes (JSON)</button>
+        <button id="import-json" class="btn btn-soft">⬆️ Import palettes (JSON)</button>
+        <input type="file" id="json-file" accept=".json,application/json" hidden>
+      </div>
+      <div class="setting-row">
+        <button id="clear-storage" class="btn btn-danger">Delete saved data</button>
+      </div>
     </div>
   </main>
 </div>
@@ -126,11 +199,58 @@
   </div>
 </div>
 
+<!-- ============ COLOUR PICKER MODAL ============ -->
+<div class="modal-backdrop" id="picker-backdrop">
+  <div class="modal picker-modal" role="dialog" aria-label="Colour picker">
+    <h3>Pick a colour</h3>
+    <div class="sv-area" id="sv-area"><div class="sv-thumb" id="sv-thumb"></div></div>
+    <div class="hue-track" id="hue-track"><div class="hue-thumb" id="hue-thumb"></div></div>
+    <div class="picker-row">
+      <div class="picker-preview" id="picker-preview"></div>
+      <button id="eyedropper-btn" class="icon-btn wide" title="Pick colour from screen">💧</button>
+      <input type="text" id="picker-hex" class="hex-input" maxlength="7" spellcheck="false" aria-label="Hex value">
+    </div>
+    <div class="picker-row rgb-row">
+      <label>R <input type="number" id="picker-r" min="0" max="255"></label>
+      <label>G <input type="number" id="picker-g" min="0" max="255"></label>
+      <label>B <input type="number" id="picker-b" min="0" max="255"></label>
+    </div>
+    <div class="muted small presets-label">Recent</div>
+    <div class="presets" id="presets-recent"></div>
+    <div class="modal-actions">
+      <button id="picker-cancel" class="btn btn-soft">Cancel</button>
+      <button id="picker-ok" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HOTKEYS MODAL ============ -->
+<div class="modal-backdrop" id="hotkeys-backdrop">
+  <div class="modal hotkeys-modal" role="dialog" aria-label="Hotkeys">
+    <h3>⌨️ Hotkeys</h3>
+    <div class="hotkey-grid">
+      <span><kbd>A</kbd></span><span>Add colour</span>
+      <span><kbd>E</kbd></span><span>Edit selected</span>
+      <span><kbd>D</kbd> / <kbd>Del</kbd></span><span>Delete selected (or last)</span>
+      <span><kbd>R</kbd></span><span>Random palette</span>
+      <span><kbd>C</kbd></span><span>Copy hex codes</span>
+      <span><kbd>P</kbd></span><span>Export PNG</span>
+      <span><kbd>S</kbd></span><span>Save colourset</span>
+      <span><kbd>G</kbd></span><span>Toggle gradient</span>
+      <span><kbd>M</kbd></span><span>Toggle shuffle mode</span>
+      <span><kbd>←</kbd> / <kbd>→</kbd></span><span>Switch palette</span>
+      <span><kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd></span><span>Move selected colour</span>
+      <span><kbd>Esc</kbd></span><span>Close dialogs</span>
+      <span><kbd>?</kbd></span><span>This cheat sheet</span>
+    </div>
+    <div class="modal-actions">
+      <button id="hotkeys-close" class="btn btn-primary">Got it</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast notifications -->
 <div id="toast-holder"></div>
-
-<!-- Hidden native colour input used as the picker dialog -->
-<input type="color" id="native-color-input" style="position:absolute; left:-100px; top:-100px; width:0; height:0;" tabindex="-1">
 
 <script src="app.js"></script>
 </body>
