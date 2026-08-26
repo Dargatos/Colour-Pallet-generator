@@ -120,7 +120,8 @@ function loadPersisted() {
 function encodeShareURL() {
   const data = {
     p: palettes, c: currentPalette,
-    g: gradientEnabled ? 1 : 0, l: gradientLen, s: shuffleEnabled ? 1 : 0,
+    g: gradientEnabled ? 1 : 0, l: gradientLen,
+    s: shuffleEnabled ? 1 : 0, loop: loopEnabled ? 1 : 0,
   };
   const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   return location.origin + location.pathname + "#d=" + b64;
@@ -131,6 +132,7 @@ function decodeShareURL() {
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(3)))));
     applyRestored(data);
+    loopEnabled = !!data.loop;
     settings.autosave = true; // sharing shouldn't inherit weird autosave flags
     return "share";
   } catch (e) { return false; }
@@ -621,21 +623,6 @@ function wirePicker() {
   rgbInput("picker-g", 1);
   rgbInput("picker-b", 2);
 
-  // Eyedropper (Chromium only)
-  if (window.EyeDropper) {
-    $("eyedropper-btn").addEventListener("click", async () => {
-      try {
-        const res = new EyeDropper().open();
-        const cancelled = { v: false };
-        // EyeDropper.open() promise resolves with {sRGBHex}
-        res.then((r) => { setPickerFromHex(r.sRGBHex); pushRecent(r.sRGBHex.toUpperCase()); })
-           .catch(() => {});
-      } catch (e) { /* unsupported */ }
-    });
-  } else {
-    $("eyedropper-btn").style.display = "none";
-  }
-
   $("picker-cancel").addEventListener("click", closePicker);
   $("picker-ok").addEventListener("click", confirmPicker);
   $("picker-backdrop").addEventListener("click", (e) => {
@@ -782,108 +769,6 @@ async function onShareLink() {
     showToast("Clipboard blocked — link is in the address bar.");
     history.replaceState(null, "", "#" + url.split("#")[1]);
   }
-}
-
-/* ---------------- image import (extra) ---------------- */
-
-// Extract k dominant colours from an image using median cut + a few
-// k-means refinement passes. Returns array of hex strings.
-function extractPaletteFromImage(img, k) {
-  const S = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = S; canvas.height = S;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0, S, S);
-  const data = ctx.getImageData(0, 0, S, S).data;
-
-  const px = [];
-  for (let i = 0; i < data.length; i += 4) {
-    px.push([data[i], data[i + 1], data[i + 2]]);
-  }
-
-  // median cut
-  let boxes = [px];
-  while (boxes.length < k) {
-    boxes.sort((a, b) => boxRange(b) - boxRange(a));
-    const box = boxes.shift();
-    if (!box || box.length < 2) { if (box) boxes.push(box); break; }
-    const ch = largestChannel(box);
-    box.sort((a, b) => a[ch] - b[ch]);
-    const mid = Math.floor(box.length / 2);
-    boxes.push(box.slice(0, mid), box.slice(mid));
-  }
-
-  // k-means refinement
-  let centroids = boxes.map((b) => avgColor(b)).filter(Boolean);
-  for (let iter = 0; iter < 6; iter++) {
-    const assign = px.map((p) => {
-      let best = 0, bd = Infinity;
-      for (let c = 0; c < centroids.length; c++) {
-        const d = dist2(p, centroids[c]);
-        if (d < bd) { bd = d; best = c; }
-      }
-      return best;
-    });
-    const sums = centroids.map(() => [0, 0, 0, 0]);
-    for (let i = 0; i < px.length; i++) {
-      const s = sums[assign[i]];
-      s[0] += px[i][0]; s[1] += px[i][1]; s[2] += px[i][2]; s[3]++;
-    }
-    centroids = sums.map((s, ci) =>
-      s[3] > 0 ? [s[0] / s[3], s[1] / s[3], s[2] / s[3]] : centroids[ci]
-    );
-  }
-
-  return centroids.map((c) => rgbToHex(c.map(Math.round)));
-}
-
-function boxRange(box) {
-  const ranges = [0, 1, 2].map((ch) => {
-    let min = 255, max = 0;
-    for (const p of box) { if (p[ch] < min) min = p[ch]; if (p[ch] > max) max = p[ch]; }
-    return max - min;
-  });
-  return Math.max(...ranges) * box.length;
-}
-function largestChannel(box) {
-  let bestCh = 0, bestR = -1;
-  for (const ch of [0, 1, 2]) {
-    let min = 255, max = 0;
-    for (const p of box) { if (p[ch] < min) min = p[ch]; if (p[ch] > max) max = p[ch]; }
-    if (max - min > bestR) { bestR = max - min; bestCh = ch; }
-  }
-  return bestCh;
-}
-function avgColor(box) {
-  if (!box.length) return null;
-  const s = [0, 0, 0];
-  for (const p of box) { s[0] += p[0]; s[1] += p[1]; s[2] += p[2]; }
-  return s.map((v) => v / box.length);
-}
-function dist2(a, b) { return (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2; }
-function rgbToHex(rgb) {
-  return "#" + rgb.map((v) => clamp(v, 0, 255).toString(16).padStart(2, "0")).join("").toUpperCase();
-}
-
-function onImportImage() {
-  $("img-import").onchange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = "";
-    if (!file) return;
-    const img = new Image();
-    img.onload = () => {
-      const k = clamp(parseInt($("k-value").value) || 16, 2, 256);
-      const cols = extractPaletteFromImage(img, k);
-      palettes.push(cols);
-      currentPalette = palettes.length - 1;
-      selectedIndex = null;
-      refresh();
-      showToast(`Imported ${cols.length} colours from image.`);
-      URL.revokeObjectURL(img.src);
-    };
-    img.src = URL.createObjectURL(file);
-  };
-  $("img-import").click();
 }
 
 /* ---------------- saving ---------------- */
@@ -1111,8 +996,6 @@ function wire() {
     $("set-loop").checked = loopEnabled;
     refresh();
   });
-  $("import-img-btn").addEventListener("click", onImportImage);
-
   // settings page
   $("set-autosave").addEventListener("change", (e) => {
     settings.autosave = e.target.checked;

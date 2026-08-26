@@ -18,6 +18,7 @@
     <div class="nav-appearance">
       <button class="appearance-btn" data-mode="light" title="Light mode">☀️</button>
       <button class="appearance-btn" data-mode="dark" title="Dark mode">🌙</button>
+      <button class="appearance-btn" data-mode="green" title="Turquoise green mode">🌿</button>
       <button class="appearance-btn" data-mode="system" title="System mode">🖥️</button</div>
     </div>
     <a class="nav-repo" href="https://github.com/Dargatos/Colour-Pallet-generator" target="_blank" rel="noopener">GitHub ↗</a>
@@ -74,7 +75,6 @@
         <button id="png-btn" class="icon-btn wide" title="Download preview as PNG">🖼️</button>
         <button id="share-btn" class="icon-btn wide" title="Copy shareable link">🔗</button>
       </div>
-      <input type="file" id="img-import" accept="image/*" hidden>
     </section>
 
     <!-- RIGHT: Settings -->
@@ -89,14 +89,6 @@
       <label class="check-row"><input type="checkbox" id="opt-loop"> Loop colourset (mirror colours back to the start)</label>
 
       <hr class="sep">
-
-      <h4>Image import</h4>
-      <p class="muted small">Extract a palette from an image (median cut, k=16).</p>
-      <button id="import-img-btn" class="btn btn-soft full">🖼️ Import from image…</button>
-      <div class="kmeans-row">
-        <label for="k-value">k:</label>
-        <input type="number" id="k-value" value="16" min="2" max="256">
-      </div>
     </section>
   </main>
 
@@ -200,7 +192,6 @@
     <div class="hue-track" id="hue-track"><div class="hue-thumb" id="hue-thumb"></div></div>
     <div class="picker-row">
       <div class="picker-preview" id="picker-preview"></div>
-      <button id="eyedropper-btn" class="icon-btn wide" title="Pick colour from screen">💧</button>
       <input type="text" id="picker-hex" class="hex-input" maxlength="7" spellcheck="false" aria-label="Hex value">
     </div>
     <div class="picker-row rgb-row">
