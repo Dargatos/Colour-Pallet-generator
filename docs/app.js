@@ -263,12 +263,9 @@ function renderSwatches() {
     const btn = document.createElement("button");
     btn.className = "swatch" + (idx === selectedIndex ? " selected" : "");
     btn.style.backgroundColor = hex;
+    btn.style.setProperty("--glow-color", hex);
     btn.style.color = swatchTextColor(hex);
     btn.textContent = formatHex(hex);
-    if (idx === selectedIndex) {
-      btn.style.boxShadow =
-        `0 0 14px ${hex}, 0 0 30px ${hex}66, 0 4px 14px rgba(0,0,0,0.5)`;
-    }
     btn.title = "Click: select · Drag: reorder";
     attachSwatchPointer(btn, row, idx);
     row.appendChild(btn);
@@ -276,137 +273,159 @@ function renderSwatches() {
   });
 }
 
-/* ----- drag-to-reorder ----- */
+/* ----- drag-to-reorder (LIVE: rows shift while dragging, before drop) ----- */
 
 const DRAG_THRESHOLD = 6; // px before a press becomes a drag
+
+let dragState = null; // { fromIdx, ghost }
+
+function rowsList() {
+  return Array.from($("colour-list").querySelectorAll(".swatch-row"));
+}
+
+function markDraggedRow() {
+  rowsList().forEach((r, i) => r.classList.toggle("dragging", !!dragState && i === dragState.fromIdx));
+}
+
+// Other swatches react to the dragged colour: the more similar a
+// swatch is, the stronger it glows in the dragged colour.
+function applyReactions(dragHex) {
+  if (!dragState) return;
+  const dr = parseInt(dragHex.slice(1, 3), 16);
+  const dg = parseInt(dragHex.slice(3, 5), 16);
+  const db = parseInt(dragHex.slice(5, 7), 16);
+  rowsList().forEach((r2, i2) => {
+    if (dragState && i2 === dragState.fromIdx) return;
+    const h2 = currentArray()[i2];
+    if (!h2) return;
+    const or2 = parseInt(h2.slice(1, 3), 16);
+    const og = parseInt(h2.slice(3, 5), 16);
+    const ob = parseInt(h2.slice(5, 7), 16);
+    const dist = Math.hypot(dr - or2, dg - og, db - ob); // 0..441
+    const sim = 1 - dist / 441;                          // 1 = identical
+    const sw = r2.querySelector(".swatch");
+    sw.classList.add("reacting");
+    sw.style.setProperty("--react-color", dragHex);
+    sw.style.setProperty("--react-strength", sim.toFixed(3));
+  });
+}
+
+function clearReactions() {
+  rowsList().forEach((r2) => {
+    const sw = r2.querySelector(".swatch");
+    if (!sw) return;
+    sw.classList.remove("reacting");
+    sw.style.removeProperty("--react-color");
+    sw.style.removeProperty("--react-strength");
+  });
+}
+
+// Move the dragged colour to toIdx RIGHT NOW and re-render the rows,
+// so the others slide away live while you are still holding it.
+function liveReorder(toIdx) {
+  if (!dragState) return;
+  const from = dragState.fromIdx;
+  const arrRef = currentArray();
+  if (toIdx === from || toIdx < 0 || toIdx >= arrRef.length) return;
+  const [moved] = arrRef.splice(from, 1);
+  arrRef.splice(toIdx, 0, moved);
+  if (selectedIndex === from) selectedIndex = toIdx;
+  else if (from < selectedIndex && toIdx >= selectedIndex) selectedIndex--;
+  else if (from > selectedIndex && toIdx <= selectedIndex) selectedIndex++;
+  dragState.fromIdx = toIdx;
+  renderSwatches();          // rebuild rows in the new live order
+  markDraggedRow();          // keep the dragged row faded
+  applyReactions(moved);     // re-apply similarity glows (render wiped them)
+}
+
+function startSwatchDrag(idx, btn, ev) {
+  const hex = currentArray()[idx];
+  const ghost = btn.cloneNode(true);
+  ghost.classList.add("drag-ghost");
+  ghost.style.width = `${btn.offsetWidth}px`;
+  ghost.style.height = `${btn.offsetHeight}px`;
+  ghost.style.boxShadow = `0 0 16px ${hex}, 0 0 34px ${hex}88, 0 6px 18px rgba(0,0,0,0.5)`;
+  document.body.appendChild(ghost);
+  // grabbing a swatch selects it immediately → neon glow appears on grab
+  selectedIndex = idx;
+  dragState = { fromIdx: idx, ghost };
+  document.body.classList.add("is-dragging");
+  moveSwatchGhost(ev);
+  markDraggedRow();
+  renderSwatches(); // re-render so the grabbed swatch shows its glow in the list too
+  markDraggedRow();
+}
+
+function moveSwatchGhost(ev) {
+  if (!dragState || !dragState.ghost) return;
+  dragState.ghost.style.left = `${ev.clientX - dragState.ghost.offsetWidth / 2}px`;
+  dragState.ghost.style.top = `${ev.clientY - dragState.ghost.offsetHeight / 2}px`;
+}
+
+function endSwatchDrag() {
+  if (!dragState) return;
+  if (dragState.ghost) dragState.ghost.remove();
+  dragState = null;
+  document.body.classList.remove("is-dragging");
+  clearReactions();
+  refresh(); // final render + preview + persistence
+}
 
 function attachSwatchPointer(btn, row, idx) {
   btn.style.touchAction = "none";
 
   btn.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || dragState) return;
     e.preventDefault();
 
     const startX = e.clientX;
     const startY = e.clientY;
-    let dragging = false;
-    let ghost = null;
-    let dropTargetRow = null;
-    let dropBelow = false;
-
-    const rows = () => Array.from($("colour-list").querySelectorAll(".swatch-row"));
-
-    const startDrag = () => {
-      dragging = true;
-      row.classList.add("dragging");
-      document.body.classList.add("is-dragging");
-      ghost = btn.cloneNode(true);
-      ghost.classList.add("drag-ghost");
-      ghost.style.width = `${btn.offsetWidth}px`;
-      ghost.style.height = `${btn.offsetHeight}px`;
-      document.body.appendChild(ghost);
-      moveGhost(e);
-    };
-
-    const moveGhost = (ev) => {
-      ghost.style.left = `${ev.clientX - btn.offsetWidth / 2}px`;
-      ghost.style.top = `${ev.clientY - btn.offsetHeight / 2}px`;
-    };
-
-    // Other swatches react to the dragged colour: the more similar a
-    // swatch is, the stronger it glows in the dragged colour.
-    const updateReactions = (dragHex) => {
-      const dr = parseInt(dragHex.slice(1, 3), 16);
-      const dg = parseInt(dragHex.slice(3, 5), 16);
-      const db = parseInt(dragHex.slice(5, 7), 16);
-      rows().forEach((r2, i2) => {
-        if (r2 === row) return;
-        const h2 = currentArray()[i2];
-        if (!h2) return;
-        const or2 = parseInt(h2.slice(1, 3), 16);
-        const og = parseInt(h2.slice(3, 5), 16);
-        const ob = parseInt(h2.slice(5, 7), 16);
-        const dist = Math.hypot(dr - or2, dg - og, db - ob); // 0..441
-        const sim = 1 - dist / 441;                          // 1 = identical
-        const glow = 3 + 16 * sim;
-        const alpha = Math.round(40 + 175 * sim * sim).toString(16).padStart(2, "0");
-        const sw = r2.querySelector(".swatch");
-        sw.style.boxShadow = `0 0 ${glow}px ${dragHex}${alpha}, 0 0 ${glow * 2.2}px ${dragHex}${alpha}`;
-        sw.style.transform = `translateY(${-2.5 * sim}px)`;
-      });
-    };
-
-    const clearReactions = () => {
-      rows().forEach((r2) => {
-        const sw = r2.querySelector(".swatch");
-        sw.style.boxShadow = "";
-        sw.style.transform = "";
-      });
-    };
-
-    const updateDropTarget = (ev) => {
-      const el = document.elementFromPoint(ev.clientX, ev.clientY);
-      const targetRow = el ? el.closest(".swatch-row") : null;
-      rows().forEach((r) => {
-        r.classList.remove("drop-above", "drop-below");
-        r.style.removeProperty("--drop-color");
-      });
-      dropTargetRow = null;
-      if (!targetRow || targetRow === row) return;
-      const rect = targetRow.getBoundingClientRect();
-      dropBelow = ev.clientY > rect.top + rect.height / 2;
-      dropTargetRow = targetRow;
-      targetRow.style.setProperty("--drop-color", currentArray()[idx]);
-      targetRow.classList.add(dropBelow ? "drop-below" : "drop-above");
-    };
+    let started = false;
 
     const onMove = (ev) => {
-      if (!dragging) {
+      if (!started) {
         if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
-        startDrag();
+        started = true;
+        startSwatchDrag(idx, btn, ev);
       }
-      moveGhost(ev);
-      updateDropTarget(ev);
-      updateReactions(currentArray()[idx]);
+      moveSwatchGhost(ev);
+      applyReactions(currentArray()[dragState.fromIdx]);
+      // which row is the pointer over? → reorder live
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const targetRow = el ? el.closest(".swatch-row") : null;
+      if (!targetRow || !dragState) return;
+      const rows = rowsList();
+      const j = rows.indexOf(targetRow);
+      if (j === -1 || j === dragState.fromIdx) return;
+      const rect = targetRow.getBoundingClientRect();
+      const below = ev.clientY > rect.top + rect.height / 2;
+      const toIdx = (below ? j + 1 : j) - (dragState.fromIdx < j ? 1 : 0);
+      liveReorder(toIdx);
     };
 
-    const cleanup = () => {
+    const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      if (ghost) ghost.remove();
-      document.body.classList.remove("is-dragging");
-      clearReactions();
-      rows().forEach((r) => {
-        r.classList.remove("drop-above", "drop-below", "dragging");
-        r.style.removeProperty("--drop-color");
-      });
-    };
-
-    const onUp = (ev) => {
-      if (!dragging) {
+      window.removeEventListener("pointercancel", onCancel);
+      if (!started) {
         // simple click → toggle selection
         selectedIndex = (selectedIndex === idx) ? null : idx;
         refresh();
-        cleanup();
         return;
       }
-      if (dropTargetRow) {
-        const targetIdx = rows().indexOf(dropTargetRow);
-        let insertAt = targetIdx + (dropBelow ? 1 : 0);
-        const arrRef = currentArray();
-        const moved = arrRef.splice(idx, 1)[0];
-        if (idx < insertAt) insertAt--;
-        arrRef.splice(insertAt, 0, moved);
-        if (selectedIndex === idx) selectedIndex = insertAt;
-        else if (idx < selectedIndex && insertAt >= selectedIndex) selectedIndex--;
-        else if (idx > selectedIndex && insertAt <= selectedIndex) selectedIndex++;
-      }
-      cleanup();
-      refresh();
+      endSwatchDrag();
+    };
+
+    const onCancel = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      if (started) endSwatchDrag();
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
   });
 }
 
