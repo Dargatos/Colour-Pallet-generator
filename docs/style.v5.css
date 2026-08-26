@@ -146,12 +146,13 @@ h2 { margin-top: 4px; }
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to visible so glows aren't clipped */
+  position: relative; /* Establishes a positioning context for child z-indexes */
 }
-.panel-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 6px; }
+.panel-head { display: flex; align-items: center; gap: 8px; padding: 14px 20px 6px; }
 .panel-head h3 { margin: 0 auto; font-size: 17px; }
 .palette-head { position: relative; }
-.head-right { display: flex; gap: 6px; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); }
+.head-right { display: flex; gap: 6px; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); }
 
 .icon-btn {
   background: var(--panel-2);
@@ -168,7 +169,7 @@ h2 { margin-top: 4px; }
 .icon-btn.wide { width: auto; padding: 0 10px; flex: none; }
 
 /* palette toolbar */
-.palette-actions { display: flex; gap: 8px; padding: 0 14px 14px; flex-wrap: wrap; }
+.palette-actions { display: flex; gap: 8px; padding: 0 20px 14px; flex-wrap: wrap; }
 
 /* preview */
 .panel-preview { padding-bottom: 14px; }
@@ -188,7 +189,7 @@ h2 { margin-top: 4px; }
   box-shadow: 0 4px 24px rgba(0,0,0,0.35);
 }
 .create-btn {
-  margin: 8px 14px 0;
+  margin: 8px 20px 0;
   padding: 12px;
   font-size: 21px;
   font-weight: 700;
@@ -205,7 +206,8 @@ h2 { margin-top: 4px; }
 .colour-list {
   flex: 1;
   overflow-y: auto;
-  margin: 10px 14px;
+  margin: 10px 0;
+  padding: 10px 20px; /* Added 20px horizontal padding so glow isn't clipped by overflow-y */
   border-radius: 8px;
   min-height: 200px;
   display: flex;
@@ -235,7 +237,7 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
   z-index: 0;
   outline: none;
   -webkit-tap-highlight-color: transparent;
-  padding: 0 14px;          /* space for glow to show on left/right */
+  padding: 0 14px;
   text-align: center;
   transition: transform 0.12s ease;
 }
@@ -244,41 +246,36 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 .swatch::-moz-focus-inner { border: 0; }
 .swatch:hover { transform: translateY(-1px); }
 
-/* Neon glow layer: a THIN dedicated box hugging the swatch (user-specified).
-   Explicit border-radius (never inherit) + box-shadow → the shadow follows
-   this exact rounded outline. Cannot render square corners. */
+/* Neon glow layer: 
+   1. Uses radial-gradient so the glow fades smoothly at the edges.
+   2. z-index: -1 ensures it sits below the .swatch background color but above the panel. 
+*/
 .swatch::before {
   content: "";
   position: absolute;
-  inset: -4px;                 /* 2px thin halo around the label */
-  border-radius: 14px;         /* concentric with the swatch's 12px */
-  background: transparent;
-  box-shadow: 0 0 0 0 transparent;
+  inset: 0px;                 /* pushes the glow box outward */
+  border-radius: 16;        /* concentric with swatch's 12px + inset */
+  background: radial-gradient(circle at center, var(--glow-color, transparent) 0%, transparent 65%);
   opacity: 0;
+  transition: opacity 0.15s ease;
   z-index: -1;
   pointer-events: none;
-  transition: opacity 0.15s ease;
 }
 .swatch.selected {
-  transform: translateY(-3px);
+  transform: translateY(-3px) scale(1.025);
   position: relative;
-  z-index: 1;
+  z-index: 1;                 /* selected swatch and its glow render above others */
 }
 .swatch.selected::before {
-  background: var(--glow-color, transparent);   /* thin ring, 0.30 alpha look */
-  opacity: 0.3;
-  box-shadow: 0 0 14px 3px var(--glow-color, transparent); 
+  opacity: 0.6;                /* slightly stronger visibility on selection */
 }
 /* during drag: other swatches glow in the DRAGGED colour, strength = similarity */
 .swatch.reacting {
   transform: translateY(calc(var(--react-strength, 0) * -2.5px));
+  z-index: 0;
 }
-.swatch.reacting::before {
-  background: var(--react-color, transparent);
-  opacity: calc(var(--react-strength, 0) * 0.25);
-  box-shadow: 0 0 calc(4px + var(--react-strength, 0) * 12px) 2px var(--react-color, transparent);
-}
-.palette-actions { display: flex; gap: 8px; padding: 0 14px 14px; }
+
+.palette-actions { display: flex; gap: 8px; padding: 0 20px 14px; }
 .btn {
   padding: 9px 14px;
   border-radius: 8px;
@@ -295,7 +292,7 @@ body.is-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 .btn.full { width: 100%; }
 
 /* right settings panel */
-.settings-panel { padding: 14px 14px; gap: 4px; }
+.settings-panel { padding: 14px 20px; gap: 4px; }
 .settings-title { margin: 0 0 8px; text-align: center; }
 .check-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; cursor: pointer; }
 .grad-len-row { display: flex; align-items: center; gap: 8px; padding: 2px 2px 8px 24px; }
